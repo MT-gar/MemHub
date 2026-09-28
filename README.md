@@ -123,7 +123,7 @@ Missing your agent? Adapters are ~100 lines of Rust — see [CONTRIBUTING.md](CO
 
 ## Install
 
-**Desktop app** — download the latest bundle from [Releases](https://github.com/MT-gar/MemHub/releases): `.msi` / `-setup.exe` (Windows), `.dmg` (macOS), `.AppImage` / `.deb` (Linux). The CLI is bundled inside the app as a sidecar.
+**Desktop app** — download the latest bundle from [Releases](https://github.com/MT-gar/MemHub/releases): `.msi` / `-setup.exe` (Windows), `.dmg` (macOS), `.AppImage` / `.deb` / `.rpm` (Linux). The CLI is bundled inside the app as a sidecar.
 
 > macOS builds are not notarised yet: right-click → *Open* on first launch.
 

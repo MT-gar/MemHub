@@ -123,7 +123,7 @@ flowchart LR
 
 ## 安装
 
-**桌面 App** — 到 [Releases](https://github.com/MT-gar/MemHub/releases) 下载最新安装包：`.msi` / `-setup.exe`（Windows）、`.dmg`（macOS）、`.AppImage` / `.deb`（Linux）。CLI 作为 sidecar 已内置在 App 中。
+**桌面 App** — 到 [Releases](https://github.com/MT-gar/MemHub/releases) 下载最新安装包：`.msi` / `-setup.exe`（Windows）、`.dmg`（macOS）、`.AppImage` / `.deb` / `.rpm`（Linux）。CLI 作为 sidecar 已内置在 App 中。
 
 > macOS 版本暂未签名公证：首次打开请右键 → 打开。
 

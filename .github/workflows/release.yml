@@ -3,13 +3,62 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build and release (e.g. v0.1.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
 jobs:
+  create-release:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - id: meta
+        run: echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+      - name: Release notes from CHANGELOG.md
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          awk -v ver="$VERSION" '
+            /^## / { if (found) exit; if (index($0, "[" ver "]") > 0) { found = 1; next } }
+            found && !/^\[[^]]+\]: / { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details." > notes.md
+          fi
+          {
+            echo
+            echo '---'
+            echo '**Downloads:** `.msi` / `-setup.exe` (Windows), `.dmg` (macOS, `aarch64` = Apple Silicon, `x64` = Intel), `.AppImage` / `.deb` / `.rpm` (Linux); `memhub-cli-<target>` archives contain the standalone CLI with the embedded web UI.'
+            echo
+            echo 'macOS builds are unsigned: right-click → **Open** on first launch. Windows SmartScreen may warn about an unknown publisher.'
+          } >> notes.md
+          cat notes.md
+      - name: Create draft release if it does not exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists — reusing it."
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft \
+              --title "MemHub $RELEASE_TAG" --notes-file notes.md
+          fi
+
   desktop:
     name: Desktop (${{ matrix.name }})
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
@@ -33,6 +82,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -51,41 +102,50 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf build-essential libssl-dev
 
-      - name: Install JS deps
+      # The web UI must exist BEFORE the CLI is compiled: `memhub serve` embeds ui/dist via rust-embed.
+      - name: Install JS deps & build web UI
         run: |
           npm ci --prefix ui
+          npm run build --prefix ui
           npm ci --prefix apps/desktop
 
-      - name: Build CLI sidecar
+      - name: Build CLI (sidecar + standalone archive)
         shell: bash
         run: |
-          cargo build --release -p memhub-cli --target ${{ matrix.target }}
-          EXT=""; [[ "${{ matrix.target }}" == *windows* ]] && EXT=".exe"
+          test -f ui/dist/index.html && test -d ui/dist/assets
+          T="${{ matrix.target }}"
+          cargo build --release -p memhub-cli --target "$T"
+          EXT=""; [[ "$T" == *windows* ]] && EXT=".exe"
+          BIN="target/$T/release/memhub$EXT"
+          # guard against shipping a CLI whose embedded UI is only the build.rs placeholder
+          if grep -aq "Web UI not built" "$BIN"; then
+            echo "::error::CLI was compiled without the web UI"; exit 1
+          fi
           mkdir -p apps/desktop/src-tauri/binaries
-          cp target/${{ matrix.target }}/release/memhub$EXT apps/desktop/src-tauri/binaries/memhub-${{ matrix.target }}$EXT
-          # standalone CLI archive
+          cp "$BIN" "apps/desktop/src-tauri/binaries/memhub-$T$EXT"
           mkdir -p dist-cli && cd dist-cli
           if [[ -n "$EXT" ]]; then
-            7z a memhub-cli-${{ matrix.target }}.zip ../target/${{ matrix.target }}/release/memhub.exe
+            cp "../$BIN" memhub.exe && 7z a "memhub-cli-$T.zip" memhub.exe && rm memhub.exe
           else
-            tar czf memhub-cli-${{ matrix.target }}.tar.gz -C ../target/${{ matrix.target }}/release memhub
+            tar czf "memhub-cli-$T.tar.gz" -C "../target/$T/release" memhub
           fi
+          ls -la
 
-      - name: Build & publish desktop bundles
+      - name: Build desktop bundles & upload to the draft release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'MemHub ${{ github.ref_name }}'
-          releaseBody: 'See CHANGELOG.md for details. macOS builds are unsigned: right-click → Open on first launch.'
+          tagName: ${{ needs.create-release.outputs.tag }}
+          releaseName: 'MemHub ${{ needs.create-release.outputs.tag }}'
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.tauri_args }}
 
-      - name: Upload CLI archive to the release
+      - name: Upload CLI archive to the draft release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.create-release.outputs.tag }}
           draft: true
           files: dist-cli/*

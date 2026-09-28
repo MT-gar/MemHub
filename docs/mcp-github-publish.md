@@ -41,7 +41,7 @@ Windows 实机记录见 `docs/mcp-memhub-bootstrap.md`，变更记录见 `CHANGE
 | 工作流 | 触发 | 内容 |
 |---|---|---|
 | `ci.yml` | push / PR 到 `main` | `build-test` 矩阵（ubuntu-latest、windows-latest）：`npm ci && npm run build`（ui）、`cargo build`、`cargo test --workspace`、Linux 上 `cargo clippy`（允许失败）；`desktop`（ubuntu-22.04）：安装 webkit2gtk 等依赖后对 Tauri 壳 `cargo check` |
-| `release.yml` | 推送 `v*` 标签 | 四个目标（macOS arm64 / x64、Windows x64 MSVC、Linux x64）：编译 CLI → 复制为 sidecar → 打独立 CLI 压缩包 → `tauri-action` 构建安装包并创建**草稿** Release → 上传 CLI 压缩包 |
+| `release.yml` | 推送 `v*` 标签（或手动 `workflow_dispatch` 指定已有标签） | `create-release`：从 `CHANGELOG.md` 抽取对应版本段落作为说明，用 `gh release create --draft` 建一个**草稿** Release（已存在则复用，避免四个平台并发建重复 Release）；`desktop` 矩阵（macOS arm64 / x64、Windows x64 MSVC、Linux x64）：先构建 Web UI，再编译 CLI（`memhub serve` 通过 rust-embed 内嵌 UI，因此顺序不能反；构建后检查二进制里没有占位页）→ 复制为 sidecar → 打独立 CLI 压缩包 → `tauri-action` 构建安装包并上传到草稿 Release → 上传 CLI 压缩包 |
 
 ## 2. 推送步骤（本机 Git Bash）
 
@@ -79,8 +79,9 @@ git push origin main --tags
 
 - `release.yml` 会在约 15–25 分钟内完成四个平台的构建，产物挂在一个**草稿** Release 上：
   `MemHub_0.1.0_x64_en-US.msi`、`MemHub_0.1.0_x64-setup.exe`、`MemHub_0.1.0_aarch64.dmg`、`MemHub_0.1.0_x64.dmg`、
-  `MemHub_0.1.0_amd64.AppImage`、`MemHub_0.1.0_amd64.deb`，以及 `memhub-cli-<target>.zip|tar.gz`。
-- 在 GitHub 上打开草稿 Release，补充说明（可直接粘贴 CHANGELOG 对应段落），点击 **Publish release**。
+  `MemHub_0.1.0_amd64.AppImage`、`MemHub_0.1.0_amd64.deb`、`MemHub-0.1.0-1.x86_64.rpm`，以及 `memhub-cli-<target>.zip|tar.gz`。
+- Release 说明自动取自 `CHANGELOG.md` 的 `## [0.1.0]` 段落（所以打标签前先把 `[Unreleased]` 段落改成版本号 + 日期）。
+- 在 GitHub 上打开草稿 Release 检查产物与说明，点击 **Publish release**。
 - macOS 安装包未签名公证，Release 说明中已注明「右键 → 打开」。
 
 如需重新发同一版本：删除草稿 Release 与标签（`git push origin :refs/tags/v0.1.0 && git tag -d v0.1.0`），修复后重新打标签。
