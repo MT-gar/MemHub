@@ -1,0 +1,23 @@
+[package]
+name = "memhub-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "MemHub CLI: scan / watch / MCP server / browser UI"
+
+[[bin]]
+name = "memhub"
+path = "src/main.rs"
+
+[dependencies]
+memhub-core = { path = "../memhub-core" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal"] }
+axum = "0.8"
+rust-embed = "8"
+mime_guess = "2"

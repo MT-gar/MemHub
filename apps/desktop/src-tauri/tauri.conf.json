@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MemHub",
+  "version": "0.1.0",
+  "identifier": "dev.memhub.desktop",
+  "build": {
+    "frontendDist": "../../../ui/dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm --prefix ../../ui run dev",
+    "beforeBuildCommand": "npm --prefix ../../ui run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "MemHub",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 620,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "DeveloperTool",
+    "shortDescription": "Unified local memory vault for AI agents",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": ["binaries/memhub"],
+    "linux": { "deb": { "depends": [] } },
+    "macOS": { "minimumSystemVersion": "10.15" },
+    "windows": { "webviewInstallMode": { "type": "downloadBootstrapper" } }
+  }
+}

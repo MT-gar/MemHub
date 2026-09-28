@@ -1,0 +1,10 @@
+/target
+**/node_modules
+/ui/dist
+/demo
+/apps/desktop/src-tauri/target
+/apps/desktop/src-tauri/binaries/memhub-*
+/apps/desktop/src-tauri/gen/schemas
+*.log
+.DS_Store
+/ui/tsconfig.tsbuildinfo
