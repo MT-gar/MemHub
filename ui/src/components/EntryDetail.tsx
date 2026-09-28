@@ -76,7 +76,7 @@ export function EntryDetail({ id, onChanged, onOpenEntry }: { id: string; onChan
         <dt>ID</dt><dd className="mono">{e.id}</dd>
         <dt>{t.memories.vaultPath}</dt><dd className="mono">{e.vault_path}</dd>
         {e.origin && <><dt>{t.memories.origin}</dt><dd className="mono">{e.origin}</dd></>}
-        {e.project_path && <><dt>project_path</dt><dd className="mono">{e.project_path}</dd></>}
+        {e.project_path && <><dt>{t.memories.projectPath}</dt><dd className="mono">{e.project_path}</dd></>}
         <dt>{t.common.updated}</dt><dd>{fmtDate(e.updated, true)}</dd>
         <dt>{t.common.created}</dt><dd>{fmtDate(e.created, true)}</dd>
         {e.tags.length > 0 && <><dt>tags</dt><dd>{e.tags.map((x) => <span key={x} className="badge" style={{ marginRight: 4 }}>{x}</span>)}</dd></>}

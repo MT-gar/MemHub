@@ -134,13 +134,19 @@ function TaskView({ id, onChanged, onDeleted, openEntry }: { id: string; onChang
   if (error) return <div className="detail" style={{ color: 'var(--danger)' }}>{error}</div>
   if (!data) return null
   const d: TaskDetail = data
-  const taskFile = `${d.dir}/TASK.md`
-  const resultFile = `${d.dir}/result.md`
-  const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
+  const win = /^[A-Za-z]:\\/.test(d.dir)
+  const sep = win ? '\\' : '/'
+  const taskFile = `${d.dir}${sep}TASK.md`
+  const resultFile = `${d.dir}${sep}result.md`
+  const q = (s: string) => `'${s.replace(/'/g, win ? "''" : `'\\''`)}'`
+  // bash on macOS/Linux, PowerShell on Windows (result.md must be UTF-8)
+  const cmd = (bin: string, flag: string) => win
+    ? `${bin} ${flag} (Get-Content -Raw ${q(taskFile)}) | Out-File -Encoding utf8 ${q(resultFile)}`
+    : `${bin} ${flag} "$(cat ${q(taskFile)})" > ${q(resultFile)}`
   const cli = [
-    { label: 'Claude Code', cmd: `claude -p "$(cat ${q(taskFile)})" > ${q(resultFile)}` },
-    { label: 'Codex CLI', cmd: `codex exec "$(cat ${q(taskFile)})" > ${q(resultFile)}` },
-    { label: 'Gemini CLI', cmd: `gemini -p "$(cat ${q(taskFile)})" > ${q(resultFile)}` },
+    { label: 'Claude Code', cmd: cmd('claude', '-p') },
+    { label: 'Codex CLI', cmd: cmd('codex', 'exec') },
+    { label: 'Gemini CLI', cmd: cmd('gemini', '-p') },
   ]
 
   const submit = async () => {

@@ -23,7 +23,7 @@ const zh = {
   },
   memories: {
     title: '记忆库', allAgents: '所有 Agent', noResults: '没有匹配的记忆', select: '从左侧选择一条记忆', showArchived: '显示已归档',
-    mirrored: '镜像（源文件只读）', native: 'Vault 原生', origin: '来源文件', vaultPath: 'Vault 路径', redacted: '已打码',
+    mirrored: '镜像（源文件只读）', native: 'Vault 原生', origin: '来源文件', vaultPath: 'Vault 路径', projectPath: '项目路径', redacted: '已打码',
     editWarn: '这是镜像条目：源文件下次变动时你的修改会被覆盖。', body: '正文', tags: '标签（逗号分隔）',
     entriesCount: (n: number) => `${n} 条`, newNote: '新建笔记', noteTitle: '标题', noteContent: '内容（Markdown）', noteAgent: '归属 Agent',
     sources: '来源记忆', relatedTask: '来自任务',
@@ -58,6 +58,7 @@ const zh = {
     vaultHint: '修改后需要重启应用。', paths: '路径', saved: '已保存', restart: '已保存，重启后生效。',
     mcp: 'MCP 接入', mcpHint: '把 MemHub 接入你的 Agent（复制对应片段）。二进制路径：', binPath: 'memhub 可执行文件路径',
     reindex: '重建索引', reindexed: (n: number) => `已重建索引：${n} 条`,
+    theme: '外观', themeSystem: '跟随系统', themeLight: '浅色', themeDark: '深色',
   },
 }
 
@@ -86,7 +87,7 @@ const en: Dict = {
   },
   memories: {
     title: 'Memories', allAgents: 'All agents', noResults: 'No matching memories', select: 'Select a memory on the left', showArchived: 'Show archived',
-    mirrored: 'Mirror (source is read-only)', native: 'Vault native', origin: 'Origin file', vaultPath: 'Vault path', redacted: 'Redacted',
+    mirrored: 'Mirror (source is read-only)', native: 'Vault native', origin: 'Origin file', vaultPath: 'Vault path', projectPath: 'Project path', redacted: 'Redacted',
     editWarn: 'This is a mirrored entry: your edit will be overwritten the next time the source file changes.', body: 'Body', tags: 'Tags (comma separated)',
     entriesCount: (n) => `${n} entries`, newNote: 'New note', noteTitle: 'Title', noteContent: 'Content (Markdown)', noteAgent: 'Agent',
     sources: 'Source memories', relatedTask: 'From task',
@@ -121,6 +122,7 @@ const en: Dict = {
     vaultHint: 'Requires a restart after changing.', paths: 'Paths', saved: 'Saved', restart: 'Saved. Restart to apply.',
     mcp: 'Connect via MCP', mcpHint: 'Connect MemHub to your agents (copy the matching snippet). Binary path:', binPath: 'Path of the memhub executable',
     reindex: 'Rebuild index', reindexed: (n) => `Index rebuilt: ${n} entries`,
+    theme: 'Appearance', themeSystem: 'Follow system', themeLight: 'Light', themeDark: 'Dark',
   },
 }
 

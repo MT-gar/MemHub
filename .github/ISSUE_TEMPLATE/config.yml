@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question / discussion
+    url: https://github.com/MT-gar/MemHub/discussions
+    about: Ask questions or share how you use MemHub with your agents.

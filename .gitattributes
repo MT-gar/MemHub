@@ -3,3 +3,5 @@
 *.ico binary
 *.icns binary
 *.sh text eol=lf
+*.lock linguist-generated=true
+docs/images/** -diff

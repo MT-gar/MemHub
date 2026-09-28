@@ -1,10 +1,38 @@
+# build outputs
 /target
-**/node_modules
-/ui/dist
-/demo
 /apps/desktop/src-tauri/target
-/apps/desktop/src-tauri/binaries/memhub-*
 /apps/desktop/src-tauri/gen/schemas
-*.log
-.DS_Store
+/apps/desktop/src-tauri/binaries/memhub-*
+/ui/dist
 /ui/tsconfig.tsbuildinfo
+**/node_modules
+
+# local data — never commit a vault, an index or a config
+/demo
+.memhub/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# secrets & local environment
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.local.toml
+
+# editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# logs & scratch
+*.log
+/scratch

@@ -52,7 +52,7 @@ mod tests {
     use super::*;
     #[test]
     fn redacts_keys() {
-        let (t, c) = redact("key sk-abcdefghijklmnopqrstuvwxyz1234 and AKIAABCDEFGHIJKLMNOP");
+        let (t, c) = redact("key sk-abcdefghijklmnopqrstuvwxyz1234 and AKIAIOSFODNN7EXAMPLE");
         assert!(c);
         assert!(!t.contains("sk-abc"));
         assert!(!t.contains("AKIA"));

@@ -47,12 +47,14 @@ export function KindBadge({ kind }: { kind: Kind | string }) {
   return <span className="badge kind">{t.kinds[kind] ?? kind}</span>
 }
 
+/** Local time as `YYYY-MM-DD` (+ ` HH:mm`) — stable across browser locales. */
 export function fmtDate(s?: string | null, withTime = false): string {
   if (!s) return '—'
   const d = new Date(s)
   if (isNaN(d.getTime())) return s
-  const date = d.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' })
-  return withTime ? `${date} ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : date
+  const p = (n: number) => String(n).padStart(2, '0')
+  const date = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+  return withTime ? `${date} ${p(d.getHours())}:${p(d.getMinutes())}` : date
 }
 
 export function fmtBytes(n: number): string {

@@ -1,6 +1,6 @@
 # MemHub 本地落地记录（ShunCode Bridge 会话，2026-09-28）
 
-本文档记录 MemHub M0 脚手架从云端沙箱搬到本机 `C:\文件\项目\Agent记忆管理系统` 的过程、
+本文档记录 MemHub M0 脚手架从云端沙箱搬到本机 Windows 仓库目录的过程、
 在 Windows 上的验证结果、为此做的代码修正，以及后续如何运行和接入真实 Agent。
 项目总体设计见 `docs/DESIGN.md`；变更记录见 `CHANGELOG.md`。
 
@@ -82,7 +82,7 @@ npm run build --prefix apps/desktop       # 安装包：apps/desktop/src-tauri/t
 ```
 
 接入真实 Agent（把 `memhub` 换成本机可执行文件的完整路径，例如
-`C:\文件\项目\Agent记忆管理系统\target\release\memhub.exe`）：
+`C:\path\to\MemHub\target\release\memhub.exe`）：
 
 ```bash
 claude mcp add --scope user memhub -- memhub mcp

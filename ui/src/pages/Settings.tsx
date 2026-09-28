@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Config } from '../api/client'
 import { useT } from '../i18n'
 import { CopyBox, Tabs, useAsync, useToast } from '../components/common'
+import { getTheme, setTheme, type Theme } from '../theme'
 
 export function Settings() {
   const { t, setLang } = useT()
@@ -12,6 +13,8 @@ export function Settings() {
   const [bin, setBin] = useState('')
   const snippets = useAsync(() => api.snippets(bin || undefined), [bin])
   const [snip, setSnip] = useState('claude-code')
+  const [theme, setThemeState] = useState<Theme>(() => getTheme())
+  const changeTheme = (v: Theme) => { setTheme(v); setThemeState(v) }
 
   useEffect(() => { if (cfg.data) setForm(cfg.data) }, [cfg.data])
   useEffect(() => { api.sidecarPath().then((p) => { if (p) setBin(p) }).catch(() => {}) }, [])
@@ -41,6 +44,11 @@ export function Settings() {
           <label className="field"><span>{t.settings.language}</span>
             <select className="input" value={form.language.startsWith('zh') ? 'zh-CN' : 'en'} onChange={(e) => set('language', e.target.value)}>
               <option value="zh-CN">中文</option><option value="en">English</option>
+            </select>
+          </label>
+          <label className="field"><span>{t.settings.theme}</span>
+            <select className="input" value={theme} onChange={(e) => changeTheme(e.target.value as Theme)}>
+              <option value="system">{t.settings.themeSystem}</option><option value="light">{t.settings.themeLight}</option><option value="dark">{t.settings.themeDark}</option>
             </select>
           </label>
           <label className="check"><input type="checkbox" checked={form.git_snapshot} onChange={(e) => set('git_snapshot', e.target.checked)} />{t.settings.gitSnapshot}</label>

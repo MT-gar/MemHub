@@ -1,0 +1,19 @@
+name: Feature request
+description: Suggest an adapter, a template or an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: For a new agent adapter, please include where that agent stores its memory files (paths + format).
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

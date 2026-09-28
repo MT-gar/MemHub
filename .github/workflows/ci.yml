@@ -6,16 +6,47 @@ on:
 
 jobs:
   core:
-    name: Rust core + CLI
-    runs-on: ubuntu-latest
+    name: Core + CLI (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm, cache-dependency-path: ui/package-lock.json }
-      - run: npm ci --prefix ui && npm run build --prefix ui
-      - run: cargo build --workspace
-      - run: cargo test --workspace
-      - run: cargo clippy --workspace -- -D warnings
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Build web UI
+        run: npm ci --prefix ui && npm run build --prefix ui
+      - name: Build
+        run: cargo build --workspace
+      - name: Test
+        run: cargo test --workspace
+      - name: Clippy
+        if: runner.os == 'Linux'
+        run: cargo clippy --workspace -- -D warnings
         continue-on-error: true
+
+  desktop:
+    name: Desktop shell (cargo check)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+      - name: Tauri system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf build-essential libssl-dev
+      - name: Placeholder sidecar (only needed to satisfy externalBin during check)
+        run: |
+          mkdir -p apps/desktop/src-tauri/binaries
+          touch apps/desktop/src-tauri/binaries/memhub-x86_64-unknown-linux-gnu
+      - run: cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml

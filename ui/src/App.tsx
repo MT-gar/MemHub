@@ -10,23 +10,51 @@ import { Sources } from './pages/Sources'
 import { Settings } from './pages/Settings'
 
 type Page = 'overview' | 'memories' | 'knowledge' | 'tasks' | 'sources' | 'settings'
+const PAGES: Page[] = ['overview', 'memories', 'knowledge', 'tasks', 'sources', 'settings']
 const NAV: { id: Page; ico: string }[] = [
   { id: 'overview', ico: '◫' }, { id: 'memories', ico: '▤' }, { id: 'knowledge', ico: '✦' },
   { id: 'tasks', ico: '☑' }, { id: 'sources', ico: '⇄' }, { id: 'settings', ico: '⚙' },
 ]
 
+/** Routes look like `#/memories/<id>`; the id part is optional. */
+function parseHash(): { page: Page; id: string | null } {
+  const parts = location.hash.replace(/^#\/?/, '').split('/')
+  const page = (PAGES as string[]).includes(parts[0]) ? (parts[0] as Page) : 'overview'
+  return { page, id: parts[1] ? decodeURIComponent(parts[1]) : null }
+}
+
 export default function App() {
-  const [lang, setLangState] = useState<string>(() => normalizeLang(localStorage.getItem('memhub.lang')))
-  const [page, setPage] = useState<Page>('overview')
-  const [entryId, setEntryId] = useState<string | null>(null)
-  const [knowledgeId, setKnowledgeId] = useState<string | null>(null)
-  const [taskId, setTaskId] = useState<string | null>(null)
+  const urlLang = new URLSearchParams(location.search).get('lang')
+  const [lang, setLangState] = useState<string>(() => normalizeLang(urlLang ?? localStorage.getItem('memhub.lang')))
+  const initial = parseHash()
+  const [page, setPage] = useState<Page>(initial.page)
+  const [entryId, setEntryId] = useState<string | null>(initial.page === 'memories' ? initial.id : null)
+  const [knowledgeId, setKnowledgeId] = useState<string | null>(initial.page === 'knowledge' ? initial.id : null)
+  const [taskId, setTaskId] = useState<string | null>(initial.page === 'tasks' ? initial.id : null)
   const [version, setVersion] = useState('')
 
   const setLang = (l: string) => { const n = normalizeLang(l); setLangState(n); localStorage.setItem('memhub.lang', n) }
   useEffect(() => {
-    api.config().then((c) => setLang(c.language)).catch(() => {})
+    if (!urlLang) api.config().then((c) => setLang(c.language)).catch(() => {})
     api.overview().then((o) => setVersion(o.version)).catch(() => {})
+  }, [])
+
+  // keep the URL hash in sync (deep links, browser back/forward in browser mode)
+  const currentId = page === 'memories' ? entryId : page === 'knowledge' ? knowledgeId : page === 'tasks' ? taskId : null
+  useEffect(() => {
+    const next = '#/' + page + (currentId ? '/' + encodeURIComponent(currentId) : '')
+    if (location.hash !== next) history.replaceState(null, '', next)
+  }, [page, currentId])
+  useEffect(() => {
+    const onHash = () => {
+      const h = parseHash()
+      setPage(h.page)
+      if (h.page === 'memories') setEntryId(h.id)
+      if (h.page === 'knowledge') setKnowledgeId(h.id)
+      if (h.page === 'tasks') setTaskId(h.id)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
   }, [])
   const i18n = useMemo(() => ({ t: dicts[lang] ?? dicts['zh-CN'], lang, setLang }), [lang])
   const t = i18n.t

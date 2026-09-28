@@ -34,11 +34,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with: { targets: ${{ matrix.target }} }
+        with:
+          targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
-        with: { workspaces: '. -> target\napps/desktop/src-tauri -> target' }
+        with:
+          workspaces: |
+            . -> target
+            apps/desktop/src-tauri -> target
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with:
+          node-version: 20
 
       - name: Linux system deps (Tauri)
         if: runner.os == 'Linux'

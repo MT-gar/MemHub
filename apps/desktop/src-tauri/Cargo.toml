@@ -3,6 +3,7 @@ name = "memhub-desktop"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
+repository = "https://github.com/MT-gar/MemHub"
 description = "MemHub desktop app (Tauri 2)"
 
 # Standalone crate on purpose: the root workspace (core + CLI) builds without any GUI system deps.

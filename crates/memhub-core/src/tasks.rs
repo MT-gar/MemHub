@@ -313,7 +313,10 @@ pub fn get(hub: &Hub, id: &str) -> Result<TaskDetail> {
     let dir = task_dir(hub, id);
     let mut meta = read_meta(&dir).ok_or_else(|| anyhow!("task not found: {id}"))?;
     let task_md = std::fs::read_to_string(dir.join("TASK.md")).unwrap_or_default();
-    let result_md = std::fs::read_to_string(dir.join("result.md")).ok().filter(|r| !r.trim().is_empty());
+    let result_md = std::fs::read_to_string(dir.join("result.md"))
+        .ok()
+        .map(|r| r.trim_start_matches('\u{feff}').to_string())
+        .filter(|r| !r.trim().is_empty());
     // A result written directly to result.md (e.g. `claude -p … > result.md`) promotes the task.
     if result_md.is_some() && meta.status == "pending" {
         meta.status = "done".into();
