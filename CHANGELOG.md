@@ -5,6 +5,10 @@ All notable changes to MemHub are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-10-01
+
+Stability release: first validation on a real machine, hardened browser mode, more tests.
+
 ### Security
 - `memhub serve` now validates every request. Loopback binds only accept a loopback `Host` (DNS-rebinding protection); an `Origin` header, when present, must be the server itself or an `--allow-origin` (cross-site requests get 403, `Origin: null` included); `POST /api/*` must be `application/json` (no preflight-free form posts). Binding to a non-loopback address — or passing `--token` / `MEMHUB_TOKEN` — requires an access token (auto-generated, 192-bit) sent as `Authorization: Bearer`, `X-MemHub-Token` or an `HttpOnly; SameSite=Strict` cookie; open the printed `http://…/?token=…` link once. `/api/health` stays open.
 
@@ -39,5 +43,6 @@ First public release.
 - Dates in the UI are rendered as `YYYY-MM-DD HH:mm` regardless of the browser locale.
 - `project_path` in the entry detail view is localised.
 
-[Unreleased]: https://github.com/MT-gar/MemHub/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/MT-gar/MemHub/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/MT-gar/MemHub/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/MT-gar/MemHub/releases/tag/v0.1.0
