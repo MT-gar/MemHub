@@ -94,3 +94,34 @@ fn item(ws_name: &str, ws: &Path, source: &str, origin: PathBuf, kind: Kind, vau
         vault_rel,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testutil::TempDir;
+
+    #[test]
+    fn workspaces_under_home_and_file_kinds() {
+        let t = TempDir::new("openclaw");
+        t.write("workspace/MEMORY.md", "# long\n");
+        t.write("workspace/USER.md", "# user\n");
+        t.write("workspace/AGENTS.md", "# agents\n");
+        t.write("workspace/memory/2026-09-27.md", "# day\n");
+        t.write("workspace/memory/projects.md", "# evergreen\n");
+        t.write("workspace-scout/MEMORY.md", "# scout\n");
+        t.write("state/ignored.md", "# not a workspace\n");
+        let items = collect(t.path(), &SourceConfig::default());
+        assert_eq!(items.len(), 6, "{items:#?}");
+        assert_eq!(items.iter().filter(|i| i.project == "scout").count(), 1);
+        assert!(items.iter().any(|i| i.kind == Kind::DailyLog && i.vault_rel.to_string_lossy().contains("daily")));
+        assert!(items.iter().any(|i| i.kind == Kind::Profile));
+        assert!(items.iter().all(|i| !i.origin.to_string_lossy().contains("state")));
+    }
+
+    #[test]
+    fn home_without_workspace_is_empty() {
+        let t = TempDir::new("openclaw-state-only");
+        t.write("state/x.json", "{}");
+        assert!(collect(t.path(), &SourceConfig::default()).is_empty());
+    }
+}

@@ -50,6 +50,9 @@ impl Default for Config {
                 .iter()
                 .map(|a| SourceConfig {
                     r#type: a.id.to_string(),
+                    // `#[derive(Default)]` would give `false`; a fresh install must mirror
+                    // whatever `detect` finds (uninstalled agents are skipped anyway).
+                    enabled: true,
                     ..Default::default()
                 })
                 .collect(),

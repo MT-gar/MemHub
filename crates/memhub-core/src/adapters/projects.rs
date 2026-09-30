@@ -60,3 +60,46 @@ pub fn collect(config: &Config) -> Vec<RawItem> {
     }
     items
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ProjectConfig;
+    use crate::testutil::TempDir;
+
+    #[test]
+    fn registered_project_instruction_files_are_found_once() {
+        let t = TempDir::new("projects");
+        t.write("CLAUDE.md", "# c\n");
+        t.write("AGENTS.md", "# a\n");
+        t.write("packages/web/AGENTS.md", "# nested\n");
+        t.write(".cursor/rules/style.mdc", "---\nalwaysApply: true\n---\nuse tabs\n");
+        t.write(".github/copilot-instructions.md", "# copilot\n");
+        t.write("memory-bank/activeContext.md", "# ctx\n");
+        t.write("node_modules/pkg/AGENTS.md", "# must be skipped\n");
+        let cfg = Config {
+            projects: vec![ProjectConfig { path: t.path().to_string_lossy().to_string(), name: Some("My App".into()) }],
+            ..Default::default()
+        };
+        let items = collect(&cfg);
+        let agents: Vec<&str> = items.iter().map(|i| i.agent.as_str()).collect();
+        for want in ["claude-code", "agents-md", "cursor", "copilot", "cline"] {
+            assert!(agents.contains(&want), "missing {want}: {agents:?}");
+        }
+        // AGENTS.md at the root and nested, but nothing from node_modules
+        assert_eq!(items.iter().filter(|i| i.agent == "agents-md").count(), 2, "{items:#?}");
+        assert!(items.iter().all(|i| !i.origin.to_string_lossy().contains("node_modules")));
+        assert!(items.iter().all(|i| i.project == "My-App" || i.project == "my-app" || i.project.eq_ignore_ascii_case("my-app")));
+        assert_eq!(items.iter().find(|i| i.agent == "cline").unwrap().kind, Kind::Memory);
+        assert_eq!(items.iter().find(|i| i.agent == "cursor").unwrap().kind, Kind::Instruction);
+    }
+
+    #[test]
+    fn missing_project_directory_is_ignored() {
+        let cfg = Config {
+            projects: vec![ProjectConfig { path: "/definitely/not/here/memhub-test".into(), name: None }],
+            ..Default::default()
+        };
+        assert!(collect(&cfg).is_empty());
+    }
+}

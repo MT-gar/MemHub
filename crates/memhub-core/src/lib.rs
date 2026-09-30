@@ -20,6 +20,38 @@ pub mod tasks;
 pub mod vault;
 pub mod watch;
 
+#[cfg(test)]
+pub(crate) mod testutil {
+    //! Tiny temp-dir helper (removed on drop) so tests do not need an extra dependency.
+    use std::path::{Path, PathBuf};
+
+    pub struct TempDir(PathBuf);
+
+    impl TempDir {
+        pub fn new(tag: &str) -> TempDir {
+            let p = std::env::temp_dir().join(format!("memhub-test-{tag}-{}", ulid::Ulid::new()));
+            std::fs::create_dir_all(&p).unwrap();
+            TempDir(p)
+        }
+        pub fn path(&self) -> &Path {
+            &self.0
+        }
+        /// Write `content` to `rel` below the temp dir (parents are created).
+        pub fn write(&self, rel: &str, content: &str) -> PathBuf {
+            let p = self.0.join(rel);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(&p, content).unwrap();
+            p
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+}
+
 pub use config::{Config, Paths};
 pub use hub::{Hub, VERSION};
 pub use model::*;
@@ -46,6 +78,8 @@ mod tests {
         let hub = Hub::open_at(home.clone()).unwrap();
         let mut cfg = hub.config();
         cfg.git_snapshot = false;
+        // hermetic: built-in adapters are enabled by default and would read the real ~/.claude etc.
+        cfg.sources.retain(|s| s.r#type == "generic");
         cfg.sources.push(config::SourceConfig {
             r#type: "generic".into(),
             name: Some("agent-a".into()),
@@ -120,6 +154,65 @@ mod tests {
         let hits = hub.search("milk", &EntryFilter::default()).unwrap();
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].agent, "claude-code");
+        let _ = fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn fresh_config_enables_builtin_sources() {
+        let home = temp_home("fresh");
+        let hub = Hub::open_at(home.clone()).unwrap();
+        let cfg = hub.config();
+        assert_eq!(cfg.sources.len(), adapters::BUILTIN.len());
+        assert!(cfg.sources.iter().all(|s| s.enabled), "a fresh install must not start with every source disabled");
+        // and the flag survives a save / load round trip
+        let again = Config::load(&home.join("config.toml")).unwrap();
+        assert!(again.sources.iter().all(|s| s.enabled));
+        let _ = fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn sync_updates_changed_files_and_skips_oversized() {
+        let home = temp_home("sync");
+        let src = home.join("agent-b");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("a.md"), "# A\n\nfirst version\n").unwrap();
+        fs::write(src.join("big.md"), "x".repeat(3 * 1024)).unwrap();
+
+        let hub = Hub::open_at(home.clone()).unwrap();
+        let mut cfg = hub.config();
+        cfg.git_snapshot = false;
+        cfg.max_file_size_kb = 1;
+        cfg.sources.retain(|s| s.r#type == "generic");
+        cfg.sources.push(config::SourceConfig {
+            r#type: "generic".into(),
+            name: Some("agent-b".into()),
+            root: Some(src.to_string_lossy().to_string()),
+            enabled: true,
+            ..Default::default()
+        });
+        hub.update_config(cfg).unwrap();
+
+        let r = hub.sync().unwrap();
+        assert_eq!((r.added, r.errors.len()), (1, 1), "{r:?}");
+        assert!(r.errors[0].contains("skipped"), "{r:?}");
+
+        // change the file -> counted as updated, not added
+        fs::write(src.join("a.md"), "# A\n\nsecond version with more words\n").unwrap();
+        let r2 = hub.sync().unwrap();
+        assert_eq!((r2.added, r2.updated), (0, 1), "{r2:?}");
+        assert_eq!(hub.search("second version", &EntryFilter::default()).unwrap().len(), 1);
+        assert_eq!(hub.search("first version", &EntryFilter::default()).unwrap().len(), 0);
+        let _ = fs::remove_dir_all(home);
+    }
+
+    #[test]
+    fn cjk_search_and_inbox_notes() {
+        let home = temp_home("cjk");
+        let hub = Hub::open_at(home.clone()).unwrap();
+        hub.write_note("tester", "编码偏好", "回答请使用简体中文，代码注释使用英文。", vec![], None).unwrap();
+        // FTS5 trigram tokenizer: 3+ characters match
+        assert_eq!(hub.search("简体中文", &EntryFilter::default()).unwrap().len(), 1);
+        assert_eq!(hub.search("代码注释", &EntryFilter { kind: Some(Kind::Note), ..Default::default() }).unwrap().len(), 1);
         let _ = fs::remove_dir_all(home);
     }
 }

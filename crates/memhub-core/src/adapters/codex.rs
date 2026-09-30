@@ -57,3 +57,31 @@ pub fn collect(root: &Path, _cfg: &SourceConfig) -> Vec<RawItem> {
     }
     items
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testutil::TempDir;
+
+    #[test]
+    fn global_instructions_and_memories_are_classified() {
+        let t = TempDir::new("codex");
+        t.write("AGENTS.md", "# rules\n");
+        t.write("AGENT.md", "# legacy singular name is ignored\n");
+        t.write("memories/memory_summary.md", "# s\n");
+        t.write("memories/MEMORY.md", "# m\n");
+        t.write("memories/rollout_summaries/2026-09-01-a.md", "# r\n");
+        t.write("memories_1.sqlite", "not a markdown file");
+        let items = collect(t.path(), &SourceConfig::default());
+        assert_eq!(items.len(), 4, "{items:#?}");
+        assert!(items.iter().any(|i| i.kind == Kind::Instruction && i.vault_rel.ends_with("AGENTS.md")));
+        assert!(items.iter().any(|i| i.kind == Kind::SessionSummary));
+        assert_eq!(items.iter().filter(|i| i.kind == Kind::Memory).count(), 2);
+    }
+
+    #[test]
+    fn empty_home_yields_nothing() {
+        let t = TempDir::new("codex-empty");
+        assert!(collect(t.path(), &SourceConfig::default()).is_empty());
+    }
+}
