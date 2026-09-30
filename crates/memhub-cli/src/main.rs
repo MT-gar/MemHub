@@ -294,7 +294,7 @@ fn main() -> Result<()> {
                     }
                     let st = if approve { Status::Approved } else { Status::Draft };
                     let o = rules::add(&hub, NewRule { text, detail, scope, status: Some(st), agent: "user".into(), ..Default::default() })?;
-                    println!("{} {}", if o.created { "added" } else { "already exists:" }, &o.rule.id);
+                    println!("{} {}", if o.created { "added" } else { "already exists:" }, o.rule.id);
                     print_rules(&[o.rule]);
                 }
                 RulesCmd::Approve { id, yes } => {
