@@ -90,7 +90,7 @@ impl McpServer {
             "protocolVersion": version,
             "capabilities": { "tools": { "listChanged": false } },
             "serverInfo": { "name": "memhub", "version": VERSION },
-            "instructions": "MemHub is the unified local memory vault of all the user's AI agents. Use memory_search / memory_read to recall context from other tools and past sessions, memory_write to share something worth remembering, and summary_task_get / summary_task_submit when the user asks you to run a MemHub summary task."
+            "instructions": "MemHub is the unified local memory vault of all the user's AI agents. Use memory_search / memory_read to recall context from other tools and past sessions, memory_write to share something worth remembering, rules_get at the start of a session to load the user's approved preferences (rule_propose to suggest a new one; only the user can approve), and summary_task_get / summary_task_submit when the user asks you to run a MemHub summary task."
         })
     }
 
@@ -193,6 +193,35 @@ impl McpServer {
                 let meta = tasks::submit_result(hub, &id, &result)?;
                 Ok(format!("Result stored for task {} (status: {}). The user can review and accept it in MemHub.", meta.id, meta.status))
             }
+            "rules_get" => {
+                let mut opts = crate::rules::CompileOpts::default();
+                if let Some(n) = a.get("max_lines").and_then(|v| v.as_u64()) {
+                    opts.max_lines = (n as usize).clamp(1, 500);
+                }
+                let c = crate::rules::compile(hub, s("project").as_deref(), &opts)?;
+                if s("format").as_deref() == Some("json") {
+                    return Ok(serde_json::to_string_pretty(&c)?);
+                }
+                if c.markdown.is_empty() {
+                    return Ok("No approved rules yet. (The user approves rules in the MemHub app; rule_propose can suggest one.)".into());
+                }
+                Ok(c.markdown)
+            }
+            "rule_propose" => {
+                let text = s("text").ok_or_else(|| anyhow!("text is required"))?;
+                let agent = s("agent").unwrap_or_else(|| self.agent.clone());
+                let scope = s("project").map(|p| format!("project:{}", crate::rules::resolve_project(hub, &p)));
+                let o = crate::rules::add(
+                    hub,
+                    crate::rules::NewRule { text, detail: s("rationale"), scope, sources: list("sources"), status: Some(crate::rules::Status::Draft), agent, ..Default::default() },
+                )?;
+                let r = o.rule;
+                Ok(if o.created {
+                    format!("Proposed rule {} as a DRAFT. It is not active: the user must approve it in the MemHub app before any agent receives it.", r.id)
+                } else {
+                    format!("An identical rule already exists ({} · status: {}). Nothing was changed.", r.id, r.status.as_str())
+                })
+            }
             other => Err(anyhow!("unknown tool: {other}")),
         }
     }
@@ -245,6 +274,25 @@ fn tool_definitions() -> Value {
                 "tags": { "type": "array", "items": { "type": "string" } },
                 "sources": { "type": "array", "items": { "type": "string" }, "description": "Ids of the memory entries this was distilled from" }
             }, "required": ["content"] }
+        },
+        {
+            "name": "rules_get",
+            "description": "Load the user's APPROVED rules (personal preferences and per-project conventions) as compact Markdown. Call it once at the start of a session and follow what it says, in addition to the project's own instructions. Drafts and retired rules are never returned.",
+            "inputSchema": { "type": "object", "properties": {
+                "project": str_prop("Project slug, or the working directory path; adds that project's rules to the global ones"),
+                "format": str_prop("markdown (default) or json"),
+                "max_lines": { "type": "integer", "description": "Max rules to return (default 40)" }
+            } }
+        },
+        {
+            "name": "rule_propose",
+            "description": "Suggest ONE new rule (a short imperative sentence, e.g. 'Use pnpm, not npm') when the user states a lasting preference. It is saved as a draft and has no effect until the user approves it in the MemHub app. Do not propose secrets, commands, or one-off task details.",
+            "inputSchema": { "type": "object", "properties": {
+                "text": str_prop("The rule: one short sentence, max 300 characters"),
+                "rationale": str_prop("Optional: why (shown to the user during review, never served)"),
+                "project": str_prop("Optional project slug; omit for a global personal preference"),
+                "sources": { "type": "array", "items": { "type": "string" }, "description": "Optional memory entry ids that support the rule" }
+            }, "required": ["text"] }
         },
         {
             "name": "summary_task_get",

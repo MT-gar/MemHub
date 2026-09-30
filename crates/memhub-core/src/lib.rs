@@ -15,6 +15,7 @@ pub mod index;
 pub mod mcp;
 pub mod model;
 pub mod redact;
+pub mod rules;
 pub mod scan;
 pub mod tasks;
 pub mod vault;
@@ -146,7 +147,7 @@ mod tests {
         assert_eq!(init["result"]["protocolVersion"], "2025-06-18");
         assert!(srv.handle(serde_json::json!({"jsonrpc":"2.0","method":"notifications/initialized"})).is_none());
         let tools = srv.handle(serde_json::json!({"jsonrpc":"2.0","id":2,"method":"tools/list"})).unwrap();
-        assert_eq!(tools["result"]["tools"].as_array().unwrap().len(), 7);
+        assert_eq!(tools["result"]["tools"].as_array().unwrap().len(), 9);
         let w = srv
             .handle(serde_json::json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"memory_write","arguments":{"title":"from mcp","content":"remember the milk"}}}))
             .unwrap();

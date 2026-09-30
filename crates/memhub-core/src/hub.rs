@@ -82,7 +82,7 @@ pub fn extract_title(body: &str, path: &Path) -> String {
         .unwrap_or_else(|| "untitled".into())
 }
 
-fn file_slug(title: &str) -> String {
+pub(crate) fn file_slug(title: &str) -> String {
     let s = adapters::util::slugify(title).to_lowercase();
     s.chars().take(60).collect::<String>().trim_matches('-').to_string()
 }

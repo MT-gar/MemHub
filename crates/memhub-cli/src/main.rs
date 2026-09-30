@@ -74,6 +74,92 @@ enum Cmd {
     Paths,
     /// Rebuild the search index from the vault files
     Reindex,
+    /// Print the approved rules for a project (for session hooks / `AGENTS.md` includes)
+    Context {
+        /// Project directory or slug (default: the current directory)
+        #[arg(long)]
+        project: Option<String>,
+        /// Only the global rules, ignore the current directory
+        #[arg(long)]
+        global: bool,
+        /// md | json
+        #[arg(long, default_value = "md")]
+        format: String,
+        /// Maximum number of rules
+        #[arg(long, default_value_t = 40)]
+        max_lines: usize,
+        /// Append a short id to every rule (to refer to it in `memhub rules`)
+        #[arg(long)]
+        with_ids: bool,
+    },
+    /// Review, approve and retire rules
+    Rules {
+        #[command(subcommand)]
+        cmd: RulesCmd,
+    },
+}
+
+#[derive(Subcommand)]
+enum RulesCmd {
+    /// List rules (newest last)
+    List {
+        /// draft | approved | retired
+        #[arg(long)]
+        status: Option<String>,
+        /// global | project:<name>
+        #[arg(long)]
+        scope: Option<String>,
+    },
+    /// Add a rule (saved as a draft unless --approve)
+    Add {
+        /// One short sentence, e.g. "Use pnpm, not npm"
+        text: String,
+        /// global (default) or project:<name>
+        #[arg(long)]
+        scope: Option<String>,
+        /// Why (shown during review, never served to agents)
+        #[arg(long)]
+        detail: Option<String>,
+        /// Approve immediately (needs an interactive terminal or --yes)
+        #[arg(long)]
+        approve: bool,
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Approve a draft or retired rule so agents receive it
+    Approve {
+        id: String,
+        /// Skip the interactive-terminal check (scripts you wrote yourself)
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Stop serving a rule (kept for history)
+    Retire { id: String },
+    /// Move a rule back to draft
+    Draft { id: String },
+    /// Delete a rule file for good
+    Rm { id: String },
+}
+
+/// Approval is a human decision: refuse when stdin is not a terminal unless `--yes` is given,
+/// so an agent running shell commands does not approve its own proposals by accident.
+fn require_human(yes: bool, what: &str) -> Result<()> {
+    use std::io::IsTerminal;
+    if yes || std::io::stdin().is_terminal() {
+        return Ok(());
+    }
+    anyhow::bail!("{what} must be confirmed by a person: run it in your own terminal, use the MemHub app, or pass --yes if you really mean it")
+}
+
+fn print_rules(rules: &[memhub_core::rules::Rule]) {
+    if rules.is_empty() {
+        println!("(no rules)");
+    }
+    for r in rules {
+        let id = &r.id[r.id.len().saturating_sub(6)..];
+        let warn = if r.warnings.is_empty() { String::new() } else { format!("  ⚠ {}", r.warnings.join("; ")) };
+        println!("{id}  {:<9} {:<18} {}{warn}", r.status.as_str(), r.scope, r.text);
+    }
 }
 
 fn open(home: Option<std::path::PathBuf>) -> Result<Hub> {
@@ -178,6 +264,51 @@ fn main() -> Result<()> {
         Cmd::Reindex => {
             let hub = open(cli.home)?;
             println!("indexed {} entries", hub.reindex()?);
+        }
+        Cmd::Context { project, global, format, max_lines, with_ids } => {
+            let hub = open(cli.home)?;
+            let project = if global { None } else { Some(project.unwrap_or_else(|| ".".into())) };
+            let opts = memhub_core::rules::CompileOpts { max_lines: max_lines.clamp(1, 500), with_ids, ..Default::default() };
+            let c = memhub_core::rules::compile(&hub, project.as_deref(), &opts)?;
+            if format == "json" {
+                println!("{}", serde_json::to_string_pretty(&c)?);
+            } else {
+                // Nothing approved → print nothing, so hooks inject nothing.
+                print!("{}", c.markdown);
+            }
+        }
+        Cmd::Rules { cmd } => {
+            use memhub_core::rules::{self, NewRule, Status};
+            let hub = open(cli.home)?;
+            match cmd {
+                RulesCmd::List { status, scope } => {
+                    let st = match status.as_deref() {
+                        Some(s) => Some(Status::parse(s).ok_or_else(|| anyhow::anyhow!("status must be draft | approved | retired"))?),
+                        None => None,
+                    };
+                    print_rules(&rules::list(&hub, scope.as_deref(), st)?);
+                }
+                RulesCmd::Add { text, scope, detail, approve, yes } => {
+                    if approve {
+                        require_human(yes, "approving a rule")?;
+                    }
+                    let st = if approve { Status::Approved } else { Status::Draft };
+                    let o = rules::add(&hub, NewRule { text, detail, scope, status: Some(st), agent: "user".into(), ..Default::default() })?;
+                    println!("{} {}", if o.created { "added" } else { "already exists:" }, &o.rule.id);
+                    print_rules(&[o.rule]);
+                }
+                RulesCmd::Approve { id, yes } => {
+                    require_human(yes, "approving a rule")?;
+                    print_rules(&[rules::set_status(&hub, &id, Status::Approved)?]);
+                }
+                RulesCmd::Retire { id } => print_rules(&[rules::set_status(&hub, &id, Status::Retired)?]),
+                RulesCmd::Draft { id } => print_rules(&[rules::set_status(&hub, &id, Status::Draft)?]),
+                RulesCmd::Rm { id } => {
+                    let r = rules::get(&hub, &id)?;
+                    hub.delete_entry(&r.id)?;
+                    println!("deleted {}", r.text);
+                }
+            }
         }
     }
     Ok(())

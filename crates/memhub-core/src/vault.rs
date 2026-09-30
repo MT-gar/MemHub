@@ -9,6 +9,7 @@ use walkdir::WalkDir;
 pub const AGENTS_DIR: &str = "agents";
 pub const INBOX_DIR: &str = "inbox";
 pub const KNOWLEDGE_DIR: &str = "knowledge";
+pub const RULES_DIR: &str = "rules";
 
 #[derive(Debug, Clone)]
 pub struct Vault {
@@ -25,7 +26,7 @@ impl Vault {
     }
 
     pub fn ensure_layout(&self) -> Result<()> {
-        for d in [AGENTS_DIR, INBOX_DIR, KNOWLEDGE_DIR] {
+        for d in [AGENTS_DIR, INBOX_DIR, KNOWLEDGE_DIR, RULES_DIR] {
             std::fs::create_dir_all(self.root.join(d))?;
         }
         let readme = self.root.join("README.md");
@@ -51,9 +52,9 @@ impl Vault {
             .map(|p| p.to_string_lossy().replace('\\', "/"))
     }
 
-    /// Entries under `inbox/` and `knowledge/` are native (editable); `agents/` are mirrors.
+    /// Entries under `inbox/`, `knowledge/` and `rules/` are native (editable); `agents/` are mirrors.
     pub fn is_native(rel: &str) -> bool {
-        rel.starts_with(INBOX_DIR) || rel.starts_with(KNOWLEDGE_DIR)
+        rel.starts_with(INBOX_DIR) || rel.starts_with(KNOWLEDGE_DIR) || rel.starts_with(RULES_DIR)
     }
 
     pub fn read(&self, rel: &str) -> Result<(Frontmatter, String)> {
@@ -89,7 +90,7 @@ impl Vault {
     /// All entry files (relative paths), excluding README/INDEX helper files.
     pub fn walk_entries(&self) -> Vec<String> {
         let mut out = Vec::new();
-        for d in [AGENTS_DIR, INBOX_DIR, KNOWLEDGE_DIR] {
+        for d in [AGENTS_DIR, INBOX_DIR, KNOWLEDGE_DIR, RULES_DIR] {
             let base = self.root.join(d);
             if !base.is_dir() {
                 continue;
@@ -132,6 +133,8 @@ Every file is plain Markdown with a small YAML frontmatter block.
 - `inbox/<agent>/…` — notes written through the MemHub MCP server / HTTP API. Editable.
 - `knowledge/…` — knowledge distilled from memories by summary tasks. Editable.
   `knowledge/INDEX.md` is regenerated automatically.
+- `rules/<scope>/…` — short instructions reviewed by you (status: draft / approved / retired).
+  Only approved rules are served to agents (`memhub context`, MCP `rules_get`).
 
 Frontmatter keys: id, agent, source, origin, project, project_path, kind, title,
 created, updated, origin_hash, tags, archived, redacted, sources, task, template.

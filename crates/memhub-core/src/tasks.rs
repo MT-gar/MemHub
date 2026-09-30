@@ -17,6 +17,7 @@ use std::path::{Path, PathBuf};
 const BUILTIN_TEMPLATES: &[(&str, &str)] = &[
     ("lessons", include_str!("../templates/lessons.md")),
     ("preferences", include_str!("../templates/preferences.md")),
+    ("rules", include_str!("../templates/rules.md")),
     ("project-brief", include_str!("../templates/project-brief.md")),
     ("dedupe", include_str!("../templates/dedupe.md")),
     ("digest", include_str!("../templates/digest.md")),
@@ -52,6 +53,9 @@ pub struct TaskMeta {
     pub scope: TaskScope,
     #[serde(default)]
     pub knowledge_id: Option<String>,
+    /// Draft rules created when a `rules` task was accepted.
+    #[serde(default)]
+    pub rule_ids: Vec<String>,
     #[serde(default)]
     pub language: String,
 }
@@ -170,6 +174,7 @@ pub fn resolve_scope(hub: &Hub, scope: &TaskScope) -> Result<Vec<EntrySummary>> 
             && (projects.is_empty() || projects.contains(e.project.as_str()))
             && (kinds.is_empty() || kinds.contains(e.kind.as_str()))
             && (scope.include_knowledge || e.kind != Kind::Knowledge)
+            && e.kind != Kind::Rule
     });
     entries.sort_by(|a, b| b.updated.cmp(&a.updated));
     entries.truncate(scope.limit.unwrap_or(200).clamp(1, 2000));
@@ -288,6 +293,7 @@ pub fn create(hub: &Hub, template_id: &str, title: Option<String>, scope: TaskSc
         task_bytes: task_md.len() as u64,
         scope,
         knowledge_id: None,
+        rule_ids: vec![],
         language,
     };
     write_meta(&dir, &meta)?;
@@ -369,6 +375,13 @@ pub fn accept(hub: &Hub, id: &str, agent: Option<String>) -> Result<EntrySummary
         Some(meta.id.clone()),
         Some(meta.template.clone()),
     )?;
+    if meta.template == "rules" {
+        // Bullets become *draft* rules; nothing is served to agents until a human approves them.
+        let created = crate::rules::propose_from_task(hub, &meta.id, &meta.template, &result, agent.as_deref().unwrap_or("memhub"));
+        if !created.is_empty() {
+            meta.rule_ids = created.into_iter().map(|r| r.id).collect();
+        }
+    }
     meta.status = "accepted".into();
     meta.knowledge_id = Some(entry.id.clone());
     meta.updated = now();

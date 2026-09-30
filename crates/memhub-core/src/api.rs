@@ -4,6 +4,7 @@
 use crate::config::{collapse_tilde, Config, ProjectConfig, SourceConfig};
 use crate::hub::{Hub, VERSION};
 use crate::model::{EntryFilter, Kind};
+use crate::rules::{self, CompileOpts, NewRule, Status};
 use crate::tasks::{self, TaskScope};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -14,7 +15,7 @@ pub const COMMANDS: &[&str] = &[
     "remove_source", "add_project", "remove_project", "sync_now", "reindex", "get_tree",
     "list_entries", "search_entries", "get_entry", "update_entry", "delete_entry", "create_note",
     "list_templates", "create_task", "list_tasks", "get_task", "submit_task_result", "accept_task",
-    "delete_task", "get_snippets", "get_paths",
+    "delete_task", "get_snippets", "get_paths", "list_rules", "add_rule", "set_rule_status", "edit_rule", "preview_rules",
 ];
 
 fn parse<T: for<'de> Deserialize<'de>>(v: Value) -> Result<T> {
@@ -113,6 +114,51 @@ struct AcceptParams {
 struct SnippetParams {
     /// Path of the `memhub` CLI binary to put into the snippets.
     bin: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct ListRulesParams {
+    scope: Option<String>,
+    status: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct AddRuleParams {
+    text: String,
+    detail: Option<String>,
+    scope: Option<String>,
+    sources: Vec<String>,
+    /// `approved` (default: a person typing a rule into the GUI is the approval) or `draft`.
+    status: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct RuleStatusParams {
+    id: String,
+    status: String,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct EditRuleParams {
+    id: String,
+    text: Option<String>,
+    detail: Option<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct PreviewRulesParams {
+    project: Option<String>,
+    max_lines: Option<usize>,
+    with_ids: bool,
+}
+
+fn parse_status(s: &str) -> Result<Status> {
+    Status::parse(s).ok_or_else(|| anyhow!("invalid status '{s}' (draft | approved | retired)"))
 }
 
 #[derive(Deserialize)]
@@ -264,6 +310,39 @@ pub fn dispatch(hub: &Hub, cmd: &str, params: Value) -> Result<Value> {
             let p: IdParams = parse(params)?;
             tasks::delete(hub, &p.id)?;
             json!({ "ok": true })
+        }
+        "list_rules" => {
+            let p: ListRulesParams = parse(params)?;
+            let status = match p.status.as_deref().filter(|s| !s.is_empty()) {
+                Some(s) => Some(parse_status(s)?),
+                None => None,
+            };
+            json!(rules::list(hub, p.scope.as_deref(), status)?)
+        }
+        "add_rule" => {
+            let p: AddRuleParams = parse(params)?;
+            let status = match p.status.as_deref().filter(|s| !s.is_empty()) {
+                Some(s) => parse_status(s)?,
+                None => Status::Approved,
+            };
+            let out = rules::add(hub, NewRule { text: p.text, detail: p.detail, scope: p.scope, sources: p.sources, status: Some(status), agent: "user".into(), ..Default::default() })?;
+            json!(out)
+        }
+        "set_rule_status" => {
+            let p: RuleStatusParams = parse(params)?;
+            json!(rules::set_status(hub, &p.id, parse_status(&p.status)?)?)
+        }
+        "edit_rule" => {
+            let p: EditRuleParams = parse(params)?;
+            json!(rules::edit(hub, &p.id, p.text, p.detail)?)
+        }
+        "preview_rules" => {
+            let p: PreviewRulesParams = parse(params)?;
+            let mut o = CompileOpts { with_ids: p.with_ids, ..Default::default() };
+            if let Some(n) = p.max_lines {
+                o.max_lines = n.clamp(1, 500);
+            }
+            json!(rules::compile(hub, p.project.as_deref(), &o)?)
         }
         "get_snippets" => {
             let p: SnippetParams = parse(params)?;

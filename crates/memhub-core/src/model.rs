@@ -21,10 +21,12 @@ pub enum Kind {
     Note,
     /// Knowledge distilled by summary tasks
     Knowledge,
+    /// A short, reviewed instruction served back to agents (pull-based, see `rules`)
+    Rule,
 }
 
 impl Kind {
-    pub const ALL: [Kind; 7] = [
+    pub const ALL: [Kind; 8] = [
         Kind::Instruction,
         Kind::Memory,
         Kind::DailyLog,
@@ -32,6 +34,7 @@ impl Kind {
         Kind::Profile,
         Kind::Note,
         Kind::Knowledge,
+        Kind::Rule,
     ];
 
     pub fn as_str(&self) -> &'static str {
@@ -43,6 +46,7 @@ impl Kind {
             Kind::Profile => "profile",
             Kind::Note => "note",
             Kind::Knowledge => "knowledge",
+            Kind::Rule => "rule",
         }
     }
 
