@@ -352,7 +352,7 @@ GUI 预览 result.md → 采纳 → vault/knowledge/<slug>.md（带 sources 回�
 | 风险 | 对策 |
 |---|---|
 | Agent 记忆格式/路径变化 | 声明式适配器，改配置即可；采集失败只记日志不中断 |
-| 记忆中含密钥/隐私 | 采集时可选打码；Vault 目录 0700；默认不监听公网、不上传 |
+| 记忆中含密钥/隐私 | 采集时可选打码；Vault 目录 0700；默认不监听公网、不上传；`serve` 校验 Host / Origin / Content-Type，非本机监听强制令牌（v0.1.1） |
 | 文件量大、性能 | 哈希增量、FTS 索引、单文件大小上限、去抖 |
 | 与 Agent 自身整理机制冲突（Claude Auto Dream、Codex consolidation） | 单向只读镜像，写回需显式确认 |
 | Windows 路径/编码 | 统一用 `dirs::home_dir()`；路径 slug 化；UTF-8 with BOM 处理 |
@@ -385,8 +385,21 @@ GUI 预览 result.md → 采纳 → vault/knowledge/<slug>.md（带 sources 回�
 | HTTP + 内嵌 UI | ✅ | `POST /api/<cmd>`，rust-embed |
 | Web UI | ✅ | 概览 / 记忆库 / 知识 / 总结任务 / 来源 / 设置，中英文，暗色自适应 |
 | Tauri 壳 | ✅ Windows 通过 | 沙箱无 webkit2gtk 无法编译；2026-09-28 在 Windows 本机（MSVC）`cargo check` 通过并完成 `tauri build`，详见 `docs/mcp-memhub-bootstrap.md`（`rpc` 命令、watcher 事件、`MemHub mcp` 无头模式、sidecar、capabilities、图标全套） |
-| CI / Release | ⚠️ 未跑 | `ci.yml`（test + UI build）、`release.yml`（4 平台 tauri-action + CLI 归档） |
+| CI / Release | ✅ | `ci.yml`（Ubuntu / Windows / macOS test + UI build，Linux clippy 门禁）、`release.yml`（4 平台 tauri-action + CLI 归档；v0.1.0 已发布） |
 
 Windows 本机验证（cargo build/test、demo 同步、HTTP API、BYOA 闭环、MCP stdio、sidecar、Tauri）与为此做的修正记录在 `docs/mcp-memhub-bootstrap.md`。
 
 下一步建议（进入 v0.1.0）：在本机 `npm run dev --prefix apps/desktop` 打开桌面窗口做一次人工走查，接一次真实的 Claude Code / Codex MCP，推送 GitHub 看 CI，然后打 tag 触发 Release。
+
+---
+
+## 14. v0.1.1 稳定性更新（2026-10-01）
+
+首次在真实机器上验收（详见 `docs/mcp-real-machine-verification.md`），修复两个只有真实数据才会暴露的缺陷：
+
+- 全新安装时内置来源默认关闭（`Config::default()` 与 serde 默认值不一致）→ 改为首次运行即启用已安装的 Agent；
+- Claude Code 项目目录名编码有损（所有非 `[A-Za-z0-9]` 字符都变成 `-`，CJK 也是）→ 优先用转录里的 `cwd`，其次沿真实目录树做带回溯的匹配还原，最后用可读 slug 兜底。
+
+同时为 `memhub serve` 增加请求守卫（Host / Origin / Content-Type 校验；非本机监听强制令牌），测试从 6 个增至 35 个，CI 加入 macOS 并把 clippy 变为硬性门禁。
+
+后续方向与优先级见 `docs/mcp-next-steps.md`（已确定：先做"全局个人偏好"的拉取式回灌，人工批准；写回支持全局与项目两类目标并可选）。

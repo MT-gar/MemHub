@@ -5,6 +5,20 @@ All notable changes to MemHub are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+- `memhub serve` now validates every request. Loopback binds only accept a loopback `Host` (DNS-rebinding protection); an `Origin` header, when present, must be the server itself or an `--allow-origin` (cross-site requests get 403, `Origin: null` included); `POST /api/*` must be `application/json` (no preflight-free form posts). Binding to a non-loopback address — or passing `--token` / `MEMHUB_TOKEN` — requires an access token (auto-generated, 192-bit) sent as `Authorization: Bearer`, `X-MemHub-Token` or an `HttpOnly; SameSite=Strict` cookie; open the printed `http://…/?token=…` link once. `/api/health` stays open.
+
+### Fixed
+- A fresh install no longer starts with every built-in source disabled: Claude Code, Codex, Gemini CLI, OpenClaw and Windsurf are enabled on first run (agents that are not installed are skipped as before).
+- Claude Code project directories without session transcripts were named after the last dash-separated fragment of the encoded path (`C`, `C-2026`, `skill`) and had no `project_path`. The real path is now recovered by matching the encoded name against the filesystem (handles CJK characters, `_`, `.`, spaces and dashes); otherwise a readable slug is used. Projects that were mirrored under the old names are re-mirrored under the new ones; the old entries are archived, not deleted.
+- File-watcher debounce branch that did the same thing twice; four `clippy` findings on current stable.
+
+### Changed
+- Tests: 6 → 35 (adapter fixtures for Claude Code / Codex / OpenClaw / project files / generic folders, sync update + size limit, CJK search, request-guard unit tests and router tests). The end-to-end test no longer depends on the machine's real agent directories.
+- CI: macOS added to the test matrix, `--locked` builds, `clippy --all-targets -D warnings` is now a hard gate on Linux.
+- New CLI flags: `memhub serve --allow-origin <ORIGIN>` (repeatable) and `--token <TOKEN>`.
+- Docs: real-machine verification report (`docs/mcp-real-machine-verification.md`), next-steps analysis (`docs/mcp-next-steps.md`).
+
 ## [0.1.0] — 2026-09-28
 
 First public release.

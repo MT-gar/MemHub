@@ -10,7 +10,8 @@ Please open a private security advisory on GitHub (Security → Advisories → "
 - **Summaries are produced by *your* agents.** MemHub only prepares a task pack (`TASK.md`); whichever agent you point at it sends the content to whatever model that agent uses. Check the pack before running it if a source may contain sensitive material.
 - **Secret redaction** is on by default: strings that look like API keys, tokens or private keys are replaced with `[REDACTED:kind]` while mirroring (`redact_secrets` in `config.toml`). It is a best-effort filter, not a guarantee.
 - **Git snapshots** (`git_snapshot = true`) commit the vault to a local repository under `~/.memhub/vault/.git`. Nothing is pushed anywhere.
-- The MCP server runs over stdio and is only reachable by the agent process that spawned it; browser mode binds to `127.0.0.1` unless you pass `--host`.
+- The MCP server runs over stdio and is only reachable by the agent process that spawned it.
+- Browser mode (`memhub serve`) binds to `127.0.0.1` by default. Every request is checked: loopback `Host` only (DNS rebinding), `Origin` must be the server itself or an `--allow-origin`, `POST /api/*` must be `application/json`. Listening on a non-loopback address (or `--token`) additionally requires a random access token (`Authorization: Bearer`, `X-MemHub-Token` or a `SameSite=Strict` cookie set by opening the printed `/?token=…` link). The API can read and change the vault and the list of source directories, so treat the token like a password and put TLS in front of it on untrusted networks. Other local processes running as the same user can still reach a loopback server — that is the same trust boundary as the vault files themselves.
 
 ## What never belongs in this repository
 

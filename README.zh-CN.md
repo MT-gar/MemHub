@@ -236,7 +236,7 @@ MemHub 刻意**不内置 LLM、不需要 API Key**，而是把活儿准备好，
 memhub scan                       镜像一次
 memhub watch                      镜像后持续监听
 memhub mcp [--agent NAME]         stdio MCP Server
-memhub serve [--host H] [--port 7337] [--no-watch]
+memhub serve [--host H] [--port 7337] [--no-watch] [--allow-origin O] [--token T]
                                   Web UI + HTTP API（POST /api/<command>）
 memhub detect | list | search <q> | show <id> | paths | reindex
 memhub --home <dir> …             使用另一个 MemHub 主目录
@@ -272,7 +272,8 @@ name = "shop-api"
 
 ## 隐私与安全
 
-- **纯本地。** 没有服务器、没有遥测、没有内置模型。浏览器模式默认只监听 `127.0.0.1`，除非你显式传 `--host`。
+- **纯本地。** 没有遥测、没有内置模型。浏览器模式默认只监听 `127.0.0.1`，并拒绝来自其他网站的请求（校验 Host / Origin / Content-Type，跨站提交与 DNS 重绑定都无法操控它）。
+- **对外开放需要显式开启，且必须带令牌。** 使用 `--host 0.0.0.0`（或任何非本机地址，或 `--token`）时，MemHub 会生成访问令牌并打印 `…/?token=…` 链接；没有令牌时除 `/api/health` 外一律返回 401。网络不可信时请在前面加带 TLS 的反向代理。
 - **对 Agent 只读。** MemHub 从不修改源文件；你在 App 里对镜像条目的修改会在源文件下次变化时被覆盖（App 会提示）。
 - **密钥打码**：镜像时把形似 API Key 的字符串（`sk-…`、`ghp_…`、`AKIA…`、私钥块、`password=…` 等）替换为 `[REDACTED]`。这是尽力而为——把任务包发给云端模型前请先过目。
 - **数据去哪由你决定**：总结内容只会发给*你自己*选择运行的那个 Agent。
@@ -297,10 +298,12 @@ cargo test --workspace
 npm run dev --prefix apps/desktop # 带热更新的桌面窗口
 ```
 
-CI 在 Ubuntu 和 Windows 上构建、测试，并对 Tauri 壳做 `cargo check`；打 `v*` 标签会为 Windows、macOS（arm64 + x64）、Linux 构建桌面安装包和独立 CLI 压缩包，并附到一个草稿 GitHub Release 上。欢迎贡献——见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+CI 在 Ubuntu、Windows 和 macOS 上构建、测试，并对 Tauri 壳做 `cargo check`；打 `v*` 标签会为 Windows、macOS（arm64 + x64）、Linux 构建桌面安装包和独立 CLI 压缩包，并附到一个草稿 GitHub Release 上。欢迎贡献——见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 路线图
 
+- 拉取式规则：把已批准的个人偏好通过 MCP（`rules_get`）和 `memhub context` 提供给各 Agent，之后再做可选的写回（见 [docs/mcp-next-steps.md](docs/mcp-next-steps.md)）
+- Codex 存在 SQLite 里的记忆（`memories_1.sqlite`，较新版本的 Codex）
 - 会话记录摘要（Claude Code / Codex 的 `.jsonl` → 每次会话一份回顾）
 - 带 diff 预览的写回（Vault → Agent 文件，需手动开启）
 - 跨 Agent 的去重 / 冲突视图

@@ -236,7 +236,7 @@ Every entry is Markdown with a short YAML front matter, so the vault stays usefu
 memhub scan                       mirror once
 memhub watch                      mirror, then keep watching
 memhub mcp [--agent NAME]         stdio MCP server
-memhub serve [--host H] [--port 7337] [--no-watch]
+memhub serve [--host H] [--port 7337] [--no-watch] [--allow-origin O] [--token T]
                                   web UI + HTTP API (POST /api/<command>)
 memhub detect | list | search <q> | show <id> | paths | reindex
 memhub --home <dir> …             use another MemHub home
@@ -272,7 +272,8 @@ Environment: `MEMHUB_HOME` relocates everything; `MEMHUB_USER_HOME` changes the 
 
 ## Privacy & security
 
-- **Local only.** No server, no telemetry, no bundled model. Browser mode binds to `127.0.0.1` unless you pass `--host`.
+- **Local only.** No telemetry, no bundled model. Browser mode binds to `127.0.0.1` by default and rejects requests from other websites (Host / Origin / content-type checks, so neither cross-site posts nor DNS rebinding can drive it).
+- **Exposing browser mode is opt-in and token-protected.** With `--host 0.0.0.0` (or any non-loopback address, or `--token`) MemHub generates an access token and prints a `…/?token=…` link; without the token every request except `/api/health` gets 401. Use a reverse proxy with TLS if the network is not trusted.
 - **Read-only towards your agents.** MemHub never edits the source files; edits you make to a mirrored entry are overwritten on the next change of the source (the app warns you).
 - **Secret redaction** replaces API-key-looking strings (`sk-…`, `ghp_…`, `AKIA…`, private keys, `password=…`, …) with `[REDACTED]` while mirroring. Best effort — review task packs before sending them to a hosted model.
 - **You decide what leaves the machine**: summaries only go to the agent *you* run them with.
@@ -297,10 +298,12 @@ cargo test --workspace
 npm run dev --prefix apps/desktop # desktop window with hot reload
 ```
 
-CI builds and tests on Ubuntu and Windows and type-checks the Tauri shell; tags `v*` build desktop bundles for Windows, macOS (arm64 + x64) and Linux plus standalone CLI archives and attach them to a draft GitHub Release. Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+CI builds and tests on Ubuntu, Windows and macOS and type-checks the Tauri shell; tags `v*` build desktop bundles for Windows, macOS (arm64 + x64) and Linux plus standalone CLI archives and attach them to a draft GitHub Release. Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 
+- Pull-based rules for agents: approved preferences served through MCP (`rules_get`) and `memhub context`, then opt-in write-back (see [docs/mcp-next-steps.md](docs/mcp-next-steps.md))
+- Codex memories stored in SQLite (`memories_1.sqlite`, newer Codex versions)
 - Session transcript summaries (Claude Code / Codex `.jsonl` → per-session recap)
 - Write-back with diff preview (vault → agent files, opt-in)
 - Dedupe / conflict view across agents
