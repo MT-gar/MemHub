@@ -37,6 +37,7 @@ export function Overview({ go, openEntry }: { go: (page: string) => void; openEn
       <div className="cards">
         <div className="card stat"><div className="l">{t.overview.entries}</div><div className="v">{stats.total}</div><div className="muted small">{t.overview.archived}: {stats.archived}</div></div>
         <div className="card stat"><div className="l">{t.overview.agents}</div><div className="v">{stats.by_agent.length}</div><div className="muted small">{installed.map((s) => s.label).join(' · ') || '—'}</div></div>
+        {data.pending_rules > 0 && <div className="card stat"><div className="l">{t.rules.tabs.draft}</div><div className="v">{data.pending_rules}</div><div className="muted small"><a onClick={() => go('rules')} href="#">{t.nav.rules} →</a></div></div>}
         <div className="card stat"><div className="l">{t.overview.pendingTasks}</div><div className="v">{data.pending_tasks}</div><div className="muted small"><a onClick={() => go('tasks')} href="#">{t.nav.tasks} →</a></div></div>
         <div className="card stat"><div className="l">{t.overview.vault}</div><div className="v" style={{ fontSize: 18 }}>{fmtBytes(stats.vault_bytes)}</div><div className="muted small mono ellipsis" title={data.paths.vault}>{data.paths.vault_display}</div></div>
       </div>

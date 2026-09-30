@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react'
 const zh = {
   app: 'MemHub',
   tagline: 'Agent 记忆中枢',
-  nav: { overview: '概览', memories: '记忆库', knowledge: '知识', tasks: '总结任务', sources: '来源', settings: '设置' },
+  nav: { overview: '概览', memories: '记忆库', knowledge: '知识', rules: '规则', tasks: '总结任务', sources: '来源', settings: '设置' },
   common: {
     loading: '加载中…', error: '出错了', save: '保存', cancel: '取消', delete: '删除', edit: '编辑', copy: '复制', copied: '已复制',
     refresh: '刷新', sync: '立即同步', syncing: '同步中…', close: '关闭', create: '创建', add: '添加', remove: '移除', all: '全部',
@@ -11,7 +11,7 @@ const zh = {
     updated: '更新', created: '创建', open: '打开', yes: '是', no: '否', back: '返回', confirmDelete: '确定删除？此操作不可撤销。',
   },
   kinds: {
-    instruction: '指令', memory: '记忆', 'daily-log': '日志', 'session-summary': '会话摘要', profile: '画像', note: '笔记', knowledge: '知识',
+    instruction: '指令', memory: '记忆', 'daily-log': '日志', 'session-summary': '会话摘要', profile: '画像', note: '笔记', knowledge: '知识', rule: '规则',
   } as Record<string, string>,
   overview: {
     title: '概览', entries: '记忆条目', archived: '已归档', agents: '已接入 Agent', pendingTasks: '待处理任务',
@@ -30,6 +30,21 @@ const zh = {
   },
   knowledge: {
     title: '知识', empty: '还没有知识笔记。创建一个总结任务，让你的 Agent 来提炼。', goTasks: '去创建总结任务',
+  },
+  rules: {
+    title: '规则', intro: '规则是经你批准的一句话偏好。Agent 在会话开始时「拉取」它们（MCP rules_get 或 memhub context）；MemHub 不会改动任何 Agent 自己的文件。',
+    tabs: { draft: '待审核', approved: '已批准', retired: '已退役', all: '全部' } as Record<string, string>,
+    scopeAll: '所有范围', global: '全局（个人偏好）', globalShort: '全局', project: '项目', projectName: '项目名', newRule: '新建规则', text: '规则（一句话）',
+    textPh: '例如：用简体中文回答；用 pnpm，不用 npm', detail: '理由（可选，只给你看，不会发给 Agent）', asDraft: '先存为草稿',
+    add: '添加规则', exists: '已存在相同规则', added: '已添加', approve: '批准', retire: '退役', reapprove: '重新批准', toDraft: '退回草稿',
+    empty: '这里还没有规则。', emptyDraft: '没有待审核的规则。Agent 通过 rule_propose 提议的、或总结任务采纳后产生的规则会出现在这里。',
+    by: '提议者', verified: '批准于', sources: '依据', confirmWarn: (w: string) => `这条规则有风险提示：\n\n${w}\n\n仍要批准吗？`,
+    preview: 'Agent 实际会收到的内容', previewFor: '按项目预览', previewHint: '项目目录或名称（留空 = 只看全局规则）', noneApproved: '（还没有已批准的规则，Agent 什么也不会收到）',
+    budget: (n: number, t: number) => `已批准 ${t} 条，因篇幅限制省略 ${n} 条`, bytes: (b: number) => `${b} 字节`,
+    connect: '让 Agent 读取规则', connectHint: '在你常用的 AGENTS.md / CLAUDE.md / GEMINI.md 里加一行（只需一次）；之后批准/退役立即对所有 Agent 生效，无需再改文件：',
+    connectLine: '每次会话开始时，调用 MemHub MCP 工具 rules_get（或运行 `memhub context`）并遵守其中的规则。',
+    edit: '编辑规则', saveEdit: '保存', warnings: '风险提示', fromTask: '来自总结任务',
+    draftsCreated: (n: number) => `已生成 ${n} 条草稿规则，等你审核`, goRules: '去审核',
   },
   tasks: {
     title: '总结任务', new: '新建任务', list: '任务列表', empty: '还没有任务', template: '模板', titleField: '标题（可选）',
@@ -67,7 +82,7 @@ type Dict = typeof zh
 const en: Dict = {
   app: 'MemHub',
   tagline: 'Agent memory hub',
-  nav: { overview: 'Overview', memories: 'Memories', knowledge: 'Knowledge', tasks: 'Summary tasks', sources: 'Sources', settings: 'Settings' },
+  nav: { overview: 'Overview', memories: 'Memories', knowledge: 'Knowledge', rules: 'Rules', tasks: 'Summary tasks', sources: 'Sources', settings: 'Settings' },
   common: {
     loading: 'Loading…', error: 'Something went wrong', save: 'Save', cancel: 'Cancel', delete: 'Delete', edit: 'Edit', copy: 'Copy', copied: 'Copied',
     refresh: 'Refresh', sync: 'Sync now', syncing: 'Syncing…', close: 'Close', create: 'Create', add: 'Add', remove: 'Remove', all: 'All',
@@ -75,7 +90,7 @@ const en: Dict = {
     updated: 'Updated', created: 'Created', open: 'Open', yes: 'Yes', no: 'No', back: 'Back', confirmDelete: 'Delete? This cannot be undone.',
   },
   kinds: {
-    instruction: 'instruction', memory: 'memory', 'daily-log': 'daily log', 'session-summary': 'session summary', profile: 'profile', note: 'note', knowledge: 'knowledge',
+    instruction: 'instruction', memory: 'memory', 'daily-log': 'daily log', 'session-summary': 'session summary', profile: 'profile', note: 'note', knowledge: 'knowledge', rule: 'rule',
   },
   overview: {
     title: 'Overview', entries: 'Memory entries', archived: 'Archived', agents: 'Connected agents', pendingTasks: 'Open tasks',
@@ -94,6 +109,21 @@ const en: Dict = {
   },
   knowledge: {
     title: 'Knowledge', empty: 'No knowledge notes yet. Create a summary task and let your agent distil one.', goTasks: 'Create a summary task',
+  },
+  rules: {
+    title: 'Rules', intro: 'Rules are one-sentence preferences you have approved. Agents pull them at session start (MCP rules_get or memhub context); MemHub never edits an agent\'s own files.',
+    tabs: { draft: 'To review', approved: 'Approved', retired: 'Retired', all: 'All' },
+    scopeAll: 'All scopes', global: 'Global (personal preferences)', globalShort: 'Global', project: 'Project', projectName: 'Project name', newRule: 'New rule', text: 'Rule (one sentence)',
+    textPh: 'e.g. Reply in Simplified Chinese; use pnpm, not npm', detail: 'Rationale (optional, for you only, never sent to agents)', asDraft: 'Save as draft first',
+    add: 'Add rule', exists: 'An identical rule already exists', added: 'Added', approve: 'Approve', retire: 'Retire', reapprove: 'Approve again', toDraft: 'Back to draft',
+    empty: 'No rules here yet.', emptyDraft: 'Nothing to review. Rules proposed by agents (rule_propose) or created from accepted summary tasks show up here.',
+    by: 'Proposed by', verified: 'Approved on', sources: 'Evidence', confirmWarn: (w: string) => `This rule has review warnings:\n\n${w}\n\nApprove anyway?`,
+    preview: 'What agents actually receive', previewFor: 'Preview for project', previewHint: 'Project directory or name (empty = global rules only)', noneApproved: '(No approved rules yet — agents receive nothing)',
+    budget: (n: number, t: number) => `${t} approved, ${n} left out to fit the size budget`, bytes: (b: number) => `${b} bytes`,
+    connect: 'Let your agents read the rules', connectHint: 'Add one line to the AGENTS.md / CLAUDE.md / GEMINI.md you already use (once). After that, approving or retiring a rule takes effect for every agent with no file edits:',
+    connectLine: 'At the start of every session, call the MemHub MCP tool rules_get (or run `memhub context`) and follow the rules it returns.',
+    edit: 'Edit rule', saveEdit: 'Save', warnings: 'Warnings', fromTask: 'From summary task',
+    draftsCreated: (n) => `${n} draft rule(s) created, waiting for your review`, goRules: 'Review',
   },
   tasks: {
     title: 'Summary tasks', new: 'New task', list: 'Tasks', empty: 'No tasks yet', template: 'Template', titleField: 'Title (optional)',

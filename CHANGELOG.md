@@ -5,6 +5,15 @@ All notable changes to MemHub are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Rules (pull-based feedback to agents).** New entry kind `rule` stored under `vault/rules/<scope>/` with a `draft → approved → retired` lifecycle; only approved rules are served. Scopes: `global` (personal preferences) and `project:<name>`.
+- MCP tools `rules_get` (approved rules as compact Markdown, budgeted to 40 rules / 4 KiB, global first) and `rule_propose` (propose-only: creates a draft, cannot approve).
+- CLI `memhub context [--project PATH|NAME] [--global] [--format md|json] [--max-lines N] [--with-ids]` (prints nothing when nothing is approved) and `memhub rules list|add|approve|retire|draft|rm`; approving needs an interactive terminal or `--yes`.
+- **Rules** page in the app: review queue with a badge, per-rule approve / retire / edit / delete, scope filter, live preview of exactly what agents receive, copy-ready one-line instruction for `AGENTS.md`. The Overview shows the number of drafts waiting.
+- `rules` summary template; accepting such a task turns its bullets into **draft** rules (with `[src: id]` evidence) — never into active ones.
+- HTTP / Tauri API: `list_rules`, `add_rule`, `set_rule_status`, `edit_rule`, `preview_rules`.
+- Guard rails: one line ≤ 300 chars, secrets and hidden/bidirectional characters refused, duplicates folded, review hints for shell commands / URLs / override attempts, at most 50 pending drafts, rules excluded from summary tasks.
+
 ## [0.1.1] — 2026-10-01
 
 Stability release: first validation on a real machine, hardened browser mode, more tests.

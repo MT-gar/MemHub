@@ -185,6 +185,7 @@ pub fn dispatch(hub: &Hub, cmd: &str, params: Value) -> Result<Value> {
             "sources": hub.detect_sources(),
             "last_sync": hub.last_sync().or_else(|| hub.index.get_meta("last_sync").ok().flatten().and_then(|s| serde_json::from_str(&s).ok())),
             "recent": hub.list(&EntryFilter { limit: Some(12), ..Default::default() })?,
+            "pending_rules": rules::list(hub, None, Some(Status::Draft)).map(|v| v.len()).unwrap_or(0),
             "pending_tasks": tasks::list(hub).into_iter().filter(|t| t.status != "accepted").count(),
             "paths": paths_json(hub),
         }),

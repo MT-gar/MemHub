@@ -3,7 +3,7 @@ import { api, KINDS, type TaskDetail, type TaskMeta, type TaskScope } from '../a
 import { useT } from '../i18n'
 import { AgentBadge, CopyBox, CopyButton, Empty, KindBadge, Markdown, Tabs, fmtBytes, fmtDate, useAsync, useToast } from '../components/common'
 
-export function Tasks({ selectedId, onSelect, openEntry }: { selectedId: string | null; onSelect: (id: string | null) => void; openEntry: (id: string) => void }) {
+export function Tasks({ selectedId, onSelect, openEntry, go }: { selectedId: string | null; onSelect: (id: string | null) => void; openEntry: (id: string) => void; go: (page: string) => void }) {
   const { t } = useT()
   const tasks = useAsync(() => api.tasks())
   const items = tasks.data ?? []
@@ -35,7 +35,7 @@ export function Tasks({ selectedId, onSelect, openEntry }: { selectedId: string 
         {creating || !selectedId ? (
           <NewTask onCreated={(m) => { setCreating(false); tasks.reload(); onSelect(m.id) }} />
         ) : (
-          <TaskView id={selectedId} onChanged={tasks.reload} onDeleted={() => { tasks.reload(); onSelect(null) }} openEntry={openEntry} />
+          <TaskView id={selectedId} onChanged={tasks.reload} onDeleted={() => { tasks.reload(); onSelect(null) }} openEntry={openEntry} go={go} />
         )}
       </div>
     </div>
@@ -122,7 +122,7 @@ function NewTask({ onCreated }: { onCreated: (m: TaskMeta) => void }) {
   )
 }
 
-function TaskView({ id, onChanged, onDeleted, openEntry }: { id: string; onChanged: () => void; onDeleted: () => void; openEntry: (id: string) => void }) {
+function TaskView({ id, onChanged, onDeleted, openEntry, go }: { id: string; onChanged: () => void; onDeleted: () => void; openEntry: (id: string) => void; go: (page: string) => void }) {
   const { t } = useT()
   const toast = useToast()
   const { data, error, loading, reload } = useAsync(() => api.task(id), [id])
@@ -174,6 +174,7 @@ function TaskView({ id, onChanged, onDeleted, openEntry }: { id: string; onChang
         </div>
         <div className="row">
           {d.knowledge_id && <button className="btn sm" onClick={() => openEntry(d.knowledge_id!)}>{t.tasks.viewKnowledge}</button>}
+          {(d.rule_ids?.length ?? 0) > 0 && <button className="btn sm primary" onClick={() => go('rules')}>{t.rules.draftsCreated(d.rule_ids!.length)} · {t.rules.goRules} →</button>}
           <button className="btn sm danger" onClick={del}>{t.tasks.deleteTask}</button>
         </div>
       </div>

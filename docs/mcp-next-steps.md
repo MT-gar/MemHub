@@ -215,8 +215,8 @@ v0.4.0  数据源   会话转录摘要 + 触发提醒
 | 真实目录验收 | ✅ | 见 `docs/mcp-real-machine-verification.md`；发现并修复 2 个缺陷，记录 3 个限制 |
 | 适配器夹具测试 | ✅ | 6 → 35 个测试 |
 | `serve` 加固 | ✅ | Host / Origin / Content-Type 校验 + 非本机监听强制令牌；实机 curl 冒烟 12 项全部符合预期 |
-| CI 加 macOS | ✅（待 GitHub 上跑一次确认） | `--locked`、clippy 硬门禁 |
-| 发布 v0.1.1 | ⏳ | 推送并确认 CI 后打标签 |
+| CI 加 macOS | ✅ | CI #4 三平台全绿；`--locked`、clippy 硬门禁 |
+| 发布 v0.1.1 | ✅ | 2026-10-01 发布（13 个产物，Latest）：https://github.com/MT-gar/MemHub/releases/tag/v0.1.1 |
 
 ### 8.3 由真实验收新增的待办（并入 §4 优先级）
 
@@ -231,3 +231,20 @@ v0.4.0  数据源   会话转录摘要 + 触发提醒
 3. UI：规则页（草稿 → 批准 → 退役），逐条显示证据来源。
 4. MCP `rules_get(project?, format?)` 与 CLI `memhub context [--project PATH] [--format md|json]`。
 5. 写回（v0.3.0）不在本阶段，但数据模型为 `[[targets]]` 预留。
+
+### 8.5 v0.2.0 进度（开发中，未发布）
+
+| 项 | 状态 | 说明 |
+|---|---|---|
+| `Kind::Rule` + `vault/rules/<scope>/` | ✅ | 状态与 `verified` 存在 frontmatter；`global` 与 `project-<名称>` 两类范围 |
+| MCP `rules_get` / `rule_propose` | ✅ | 只能提议草稿；实机用 stdio 冒烟：去重、拒绝密钥、草稿不外发 |
+| CLI `memhub context` / `rules …` | ✅ | `context` 无已批准规则时输出为空；批准需交互终端或 `--yes` |
+| `rules` 总结模板 | ✅ | 采纳后解析为**草稿**；重复采纳不重复建规则 |
+| 规则页 | ✅ | 待审核/已批准/已退役、范围筛选、Agent 实际所得预览、导航角标 |
+| 写回（`[[targets]]`）/ doctor | ⏳ | v0.3.0 |
+
+**设计取舍：**
+- 一条规则 = 一个文件 = 一句话（标题即规则正文，正文只放理由且**永不外发**），这样批准/退役/溯源都按条进行。
+- 状态放 frontmatter 而不是索引列：不改数据库结构，`reindex` 后状态自然保留，用户可直接编辑文件。
+- 人工批准的落点：MCP 无批准入口；GUI/HTTP 由已有的 Host/Origin/令牌守卫保护；CLI 在非交互环境拒绝批准。坦白说，能写 Vault 目录的本机进程总能直接改文件，这是纯文本方案的固有边界，文档里已如实说明。
+- 规则排除在总结任务输入之外，避免"规则 → 总结 → 规则"的自我强化回路。

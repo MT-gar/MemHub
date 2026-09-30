@@ -5,15 +5,16 @@ import { ToastProvider } from './components/common'
 import { Overview } from './pages/Overview'
 import { Memories } from './pages/Memories'
 import { Knowledge } from './pages/Knowledge'
+import { Rules } from './pages/Rules'
 import { Tasks } from './pages/Tasks'
 import { Sources } from './pages/Sources'
 import { Settings } from './pages/Settings'
 
-type Page = 'overview' | 'memories' | 'knowledge' | 'tasks' | 'sources' | 'settings'
-const PAGES: Page[] = ['overview', 'memories', 'knowledge', 'tasks', 'sources', 'settings']
+type Page = 'overview' | 'memories' | 'knowledge' | 'rules' | 'tasks' | 'sources' | 'settings'
+const PAGES: Page[] = ['overview', 'memories', 'knowledge', 'rules', 'tasks', 'sources', 'settings']
 const NAV: { id: Page; ico: string }[] = [
   { id: 'overview', ico: '◫' }, { id: 'memories', ico: '▤' }, { id: 'knowledge', ico: '✦' },
-  { id: 'tasks', ico: '☑' }, { id: 'sources', ico: '⇄' }, { id: 'settings', ico: '⚙' },
+  { id: 'rules', ico: '✓' }, { id: 'tasks', ico: '☑' }, { id: 'sources', ico: '⇄' }, { id: 'settings', ico: '⚙' },
 ]
 
 /** Routes look like `#/memories/<id>`; the id part is optional. */
@@ -32,12 +33,15 @@ export default function App() {
   const [knowledgeId, setKnowledgeId] = useState<string | null>(initial.page === 'knowledge' ? initial.id : null)
   const [taskId, setTaskId] = useState<string | null>(initial.page === 'tasks' ? initial.id : null)
   const [version, setVersion] = useState('')
+  const [pendingRules, setPendingRules] = useState(0)
 
   const setLang = (l: string) => { const n = normalizeLang(l); setLangState(n); localStorage.setItem('memhub.lang', n) }
   useEffect(() => {
     if (!urlLang) api.config().then((c) => setLang(c.language)).catch(() => {})
     api.overview().then((o) => setVersion(o.version)).catch(() => {})
   }, [])
+  // the review badge on the Rules tab follows the page you are on (cheap local call)
+  useEffect(() => { api.overview().then((o) => setPendingRules(o.pending_rules ?? 0)).catch(() => {}) }, [page])
 
   // keep the URL hash in sync (deep links, browser back/forward in browser mode)
   const currentId = page === 'memories' ? entryId : page === 'knowledge' ? knowledgeId : page === 'tasks' ? taskId : null
@@ -73,6 +77,7 @@ export default function App() {
             {NAV.map((n) => (
               <button key={n.id} className={'nav-item' + (page === n.id ? ' active' : '')} onClick={() => setPage(n.id)}>
                 <span className="ico">{n.ico}</span>{t.nav[n.id]}
+                {n.id === 'rules' && pendingRules > 0 && <span className="badge warn" style={{ marginLeft: 'auto' }}>{pendingRules}</span>}
               </button>
             ))}
             <div className="spacer" />
@@ -84,7 +89,8 @@ export default function App() {
               {page === 'overview' && <Overview go={(p) => setPage(p as Page)} openEntry={openEntry} />}
               {page === 'memories' && <Memories selectedId={entryId} onSelect={setEntryId} />}
               {page === 'knowledge' && <Knowledge selectedId={knowledgeId} onSelect={setKnowledgeId} go={(p) => setPage(p as Page)} openEntry={openEntry} />}
-              {page === 'tasks' && <Tasks selectedId={taskId} onSelect={setTaskId} openEntry={openEntry} />}
+              {page === 'rules' && <Rules openEntry={openEntry} />}
+              {page === 'tasks' && <Tasks selectedId={taskId} onSelect={setTaskId} openEntry={openEntry} go={(p) => setPage(p as Page)} />}
               {page === 'sources' && <Sources />}
               {page === 'settings' && <Settings />}
             </div>

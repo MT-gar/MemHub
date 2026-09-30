@@ -188,6 +188,8 @@ Any other MCP client (Cursor, Windsurf, Claude Desktop, OpenClaw, …):
 | `memory_list(agent?, project?, kind?, since?, limit?)` | Recent entries, filtered |
 | `memory_write(title, content, tags?, project?, agent?)` | Save a note to `vault/inbox` so other agents can find it |
 | `knowledge_save(title, content, tags?, sources?)` | Save a distilled knowledge note |
+| `rules_get(project?, format?, max_lines?)` | Load the user's **approved** rules (global + that project's) as compact Markdown |
+| `rule_propose(text, rationale?, project?, sources?)` | Suggest one rule; saved as a **draft**, inactive until the user approves it |
 | `summary_task_get(task_id?)` | Fetch a summary task (the full prompt + memories) |
 | `summary_task_submit(task_id, result)` | Return the summary for review in the app |
 
@@ -212,7 +214,25 @@ Built-in templates (editable Markdown in `~/.memhub/templates/`):
 | `preferences` | Your stable preferences, coding conventions and no-gos across all agents |
 | `project-brief` | One knowledge card per project: architecture, decisions, conventions, commands, open issues |
 | `dedupe` | Duplicated, stale or contradicting memories across agents, with proposed merges |
+| `rules` | One-sentence rules for agents; accepted bullets become **draft** rules (see below) |
 | `digest` | What each agent worked on and learned in a period; pending items |
+
+## Rules: the way back to your agents
+
+Memories flow *into* MemHub from every agent. **Rules** are how a few reviewed preferences flow back — without MemHub ever editing an agent's own files. A rule is one short sentence ("Reply in Simplified Chinese", "Use pnpm, not npm") that is either *global* (your personal preferences) or tied to one *project*.
+
+- **Lifecycle:** `draft` → `approved` → `retired`. Only **approved** rules are ever served; nothing is auto-approved. Drafts come from agents (`rule_propose`), from an accepted `rules` summary task, or from you (**Rules** page / `memhub rules add`). A rule you type into the app is approved right away (you are the reviewer), or saved as a draft if you tick the box.
+- **Pull, don't push:** agents fetch the rules when a session starts — MCP `rules_get`, or `memhub context` (prints Markdown; prints nothing when there is nothing approved, so hooks stay quiet). Add one line to the `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` you already use, once: *"At the start of every session, call the MemHub MCP tool `rules_get` (or run `memhub context`) and follow the rules it returns."* After that, approving or retiring a rule reaches every agent with no file edits.
+- **Project rules:** `memhub context` uses the current directory (`--project PATH|NAME` to choose, `--global` for global only). A path is resolved through your configured projects, else the enclosing git repository.
+- **Budget:** at most 40 rules / 4 KiB by default, global rules first; the output says how many were left out.
+- **Guard rails:** MCP can only *propose*. Rules are one line (≤ 300 chars), refused if they look like secrets or contain hidden/bidirectional characters, deduplicated, and flagged for review if they contain shell commands, URLs or "ignore previous instructions"-style text. At most 50 drafts can wait for review. Rules are never fed back into summary tasks. `memhub rules approve` refuses to run without an interactive terminal unless you pass `--yes`, so an agent running shell commands does not approve its own proposals by accident — note that any process that can write to the vault folder can still edit files, exactly as with any local tool.
+
+```
+memhub rules list [--status draft|approved|retired] [--scope global|project:NAME]
+memhub rules add "Use pnpm, not npm" [--scope project:NAME] [--detail WHY] [--approve]
+memhub rules approve|retire|draft|rm <id>      # ids: the 6-character suffix shown by `list`
+memhub context [--project PATH|NAME] [--global] [--format md|json] [--max-lines N] [--with-ids]
+```
 
 ## Vault layout
 
@@ -225,7 +245,8 @@ Built-in templates (editable Markdown in `~/.memhub/templates/`):
 └── vault/                       ★ the unified memory folder (git-initialised when git is available)
     ├── agents/<agent>/<project>/…   read-only mirrors
     ├── inbox/<agent>/…              notes written via MCP / the app
-    └── knowledge/<template>/…       accepted summaries + INDEX.md
+    ├── knowledge/<template>/…       accepted summaries + INDEX.md
+    └── rules/global|project-<name>/…  reviewed rules (status in the front matter)
 ```
 
 Every entry is Markdown with a short YAML front matter, so the vault stays useful with any editor, Obsidian, `grep`, or git — with or without MemHub.
@@ -239,6 +260,8 @@ memhub mcp [--agent NAME]         stdio MCP server
 memhub serve [--host H] [--port 7337] [--no-watch] [--allow-origin O] [--token T]
                                   web UI + HTTP API (POST /api/<command>)
 memhub detect | list | search <q> | show <id> | paths | reindex
+memhub context [--project P] [--global] [--format md|json]   approved rules for agents
+memhub rules list | add | approve | retire | draft | rm        review rules
 memhub --home <dir> …             use another MemHub home
 ```
 
@@ -302,7 +325,7 @@ CI builds and tests on Ubuntu, Windows and macOS and type-checks the Tauri shell
 
 ## Roadmap
 
-- Pull-based rules for agents: approved preferences served through MCP (`rules_get`) and `memhub context`, then opt-in write-back (see [docs/mcp-next-steps.md](docs/mcp-next-steps.md))
+- Opt-in write-back of approved rules into agent files (`AGENTS.md` …) with diff preview and rollback, plus a "doctor" that checks agents actually see the rules (see [docs/mcp-next-steps.md](docs/mcp-next-steps.md))
 - Codex memories stored in SQLite (`memories_1.sqlite`, newer Codex versions)
 - Session transcript summaries (Claude Code / Codex `.jsonl` → per-session recap)
 - Write-back with diff preview (vault → agent files, opt-in)

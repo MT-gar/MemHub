@@ -49,7 +49,7 @@
 | 🔍 **自动发现 + 单向镜像** | 检测本机安装了哪些 Agent，按内容哈希增量镜像其记忆文件；源文件删除后自动归档；可选 git 快照保留历史。**从不改写源文件**。 |
 | 🧩 **内置适配器** | Claude Code、Codex CLI、Gemini CLI、OpenClaw、Windsurf，项目级文件（`CLAUDE.md`、`AGENTS.md`、`GEMINI.md`、`.cursor/rules`、Cline `memory-bank/`、Copilot instructions、Kiro steering），以及**任意目录**（自研 Agent）。 |
 | 🖥️ **桌面 App（Tauri 2）** | 概览、三栏记忆浏览器 + 全文搜索（SQLite FTS5 trigram 分词，对中文友好）、知识笔记、总结任务、来源、设置。中英双语，浅色 / 深色主题。 |
-| 🔌 **MCP Server** | `memhub mcp` 提供 `memory_search` / `memory_read` / `memory_list` / `memory_write` / `knowledge_save` / `summary_task_get` / `summary_task_submit`，让 Agent 之间共享同一份记忆。 |
+| 🔌 **MCP Server** | `memhub mcp` 提供 `memory_search` / `memory_read` / `memory_list` / `memory_write` / `knowledge_save` / `rules_get` / `rule_propose` / `summary_task_get` / `summary_task_submit`，让 Agent 之间共享同一份记忆。 |
 | 🧠 **BYOA 总结** | 选范围 + 模板（经验教训 · 偏好规范 · 项目卡片 · 去重冲突 · 周期摘要）→ 生成任务包 → 用 MCP、一行命令或复制粘贴执行 → 预览 → 采纳为带来源回溯的知识笔记。 |
 | 🔒 **默认隐私** | 100 % 本地。镜像时对疑似密钥打码；Vault 目录以 `0700` 创建；没有任何遥测。 |
 | 🌐 **浏览器模式** | `memhub serve` 通过 HTTP 提供同一套 UI，服务器 / NAS / 无桌面环境也能用。 |
@@ -188,6 +188,8 @@ gemini mcp add memhub memhub mcp                        # Gemini CLI
 | `memory_list(agent?, project?, kind?, since?, limit?)` | 按条件列出最近的条目 |
 | `memory_write(title, content, tags?, project?, agent?)` | 把笔记写入 `vault/inbox`，供其他 Agent 查找 |
 | `knowledge_save(title, content, tags?, sources?)` | 保存一条沉淀后的知识笔记 |
+| `rules_get(project?, format?, max_lines?)` | 读取用户**已批准**的规则（全局 + 该项目）为紧凑 Markdown |
+| `rule_propose(text, rationale?, project?, sources?)` | 提议一条规则；只存为**草稿**，用户批准前不生效 |
 | `summary_task_get(task_id?)` | 获取总结任务（完整提示词 + 记忆内容） |
 | `summary_task_submit(task_id, result)` | 提交总结结果，回到 App 中审阅 |
 
@@ -212,7 +214,25 @@ MemHub 刻意**不内置 LLM、不需要 API Key**，而是把活儿准备好，
 | `preferences` 偏好规范 | 你在所有 Agent 中表现出的稳定偏好、编码规范和禁忌 |
 | `project-brief` 项目卡片 | 每个项目一张知识卡：架构、决策、约定、常用命令、待办 |
 | `dedupe` 去重冲突 | 找出跨 Agent 重复、过时或互相矛盾的记忆并给出合并建议 |
+| `rules` 规则草稿 | 提炼成一句话规则；采纳后每条成为**草稿规则**（见下节） |
 | `digest` 周期摘要 | 一段时间内各 Agent 做了什么、学到什么、还有什么没做完 |
+
+## 规则：回到 Agent 的那条路
+
+记忆从各个 Agent 流进 MemHub；**规则**则是把少量经你审核的偏好送回去的方式——而且 MemHub 从不改动任何 Agent 自己的文件。一条规则就是一句短话（「用简体中文回答」「用 pnpm，不用 npm」），范围是*全局*（个人偏好）或某个*项目*。
+
+- **生命周期：** `草稿` → `已批准` → `已退役`。只有**已批准**的规则才会被提供；没有任何自动批准。草稿来自 Agent（`rule_propose`）、被采纳的 `rules` 总结任务，或你自己（**规则**页 / `memhub rules add`）。你在 App 里手动输入的规则会直接批准（你自己就是审核人），勾选「先存为草稿」则留待审核。
+- **拉取而不是推送：** Agent 在会话开始时自己来取——MCP 的 `rules_get`，或 `memhub context`（输出 Markdown；没有已批准规则时什么都不输出，方便放进 hook）。在你已经在用的 `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` 里加一行即可（只需一次）：*「每次会话开始时，调用 MemHub MCP 工具 `rules_get`（或运行 `memhub context`）并遵守其中的规则。」* 之后批准或退役规则，对所有 Agent 立即生效，无需再改文件。
+- **项目规则：** `memhub context` 默认用当前目录（`--project 路径|名称` 指定，`--global` 只要全局）。路径会先对照你登记的项目目录，否则取所在的 git 仓库。
+- **篇幅预算：** 默认最多 40 条 / 4 KiB，全局规则优先；输出会说明省略了几条。
+- **护栏：** MCP 只能*提议*。规则限一行（≤ 300 字符）；疑似密钥、含隐藏/双向控制字符的会被拒绝；自动去重；含 shell 命令、URL 或「忽略之前的指令」之类内容的会标出风险提示；待审草稿最多 50 条；规则不会被再喂给总结任务。`memhub rules approve` 在没有交互终端时拒绝执行，除非加 `--yes`，避免在 shell 里跑命令的 Agent 无意中批准自己的提议——但要注意，任何能写 Vault 目录的进程仍然可以直接改文件，这和任何本地工具一样。
+
+```
+memhub rules list [--status draft|approved|retired] [--scope global|project:名称]
+memhub rules add "用 pnpm，不用 npm" [--scope project:名称] [--detail 理由] [--approve]
+memhub rules approve|retire|draft|rm <id>      # id：list 里显示的 6 位后缀
+memhub context [--project 路径|名称] [--global] [--format md|json] [--max-lines N] [--with-ids]
+```
 
 ## Vault 结构
 
@@ -225,7 +245,8 @@ MemHub 刻意**不内置 LLM、不需要 API Key**，而是把活儿准备好，
 └── vault/                       ★ 统一记忆目录（有 git 时自动 git init）
     ├── agents/<agent>/<project>/…   只读镜像
     ├── inbox/<agent>/…              通过 MCP / App 写入的笔记
-    └── knowledge/<模板>/…            采纳的总结 + INDEX.md
+    ├── knowledge/<模板>/…            采纳的总结 + INDEX.md
+    └── rules/global|project-<名称>/…  经审核的规则（状态在 frontmatter 里）
 ```
 
 每个条目都是 Markdown + 一小段 YAML frontmatter，所以就算不用 MemHub，这个目录用任何编辑器、Obsidian、`grep` 或 git 都照样好使。
@@ -239,6 +260,8 @@ memhub mcp [--agent NAME]         stdio MCP Server
 memhub serve [--host H] [--port 7337] [--no-watch] [--allow-origin O] [--token T]
                                   Web UI + HTTP API（POST /api/<command>）
 memhub detect | list | search <q> | show <id> | paths | reindex
+memhub context [--project P] [--global] [--format md|json]   给 Agent 的已批准规则
+memhub rules list | add | approve | retire | draft | rm        审核规则
 memhub --home <dir> …             使用另一个 MemHub 主目录
 ```
 
@@ -302,7 +325,7 @@ CI 在 Ubuntu、Windows 和 macOS 上构建、测试，并对 Tauri 壳做 `carg
 
 ## 路线图
 
-- 拉取式规则：把已批准的个人偏好通过 MCP（`rules_get`）和 `memhub context` 提供给各 Agent，之后再做可选的写回（见 [docs/mcp-next-steps.md](docs/mcp-next-steps.md)）
+- 可选的写回：把已批准的规则带 diff 预览、可回滚地写进 Agent 文件（`AGENTS.md` 等），并提供「doctor」检查各 Agent 是否真的看到了规则（见 [docs/mcp-next-steps.md](docs/mcp-next-steps.md)）
 - Codex 存在 SQLite 里的记忆（`memories_1.sqlite`，较新版本的 Codex）
 - 会话记录摘要（Claude Code / Codex 的 `.jsonl` → 每次会话一份回顾）
 - 带 diff 预览的写回（Vault → Agent 文件，需手动开启）

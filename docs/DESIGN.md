@@ -403,3 +403,13 @@ Windows 本机验证（cargo build/test、demo 同步、HTTP API、BYOA 闭环�
 同时为 `memhub serve` 增加请求守卫（Host / Origin / Content-Type 校验；非本机监听强制令牌），测试从 6 个增至 35 个，CI 加入 macOS 并把 clippy 变为硬性门禁。
 
 后续方向与优先级见 `docs/mcp-next-steps.md`（已确定：先做"全局个人偏好"的拉取式回灌，人工批准；写回支持全局与项目两类目标并可选）。
+
+## 15. v0.2.0 拉取式规则（开发中）
+
+记忆是"进"，规则是"回"：经用户批准的一句话偏好，由 Agent 在会话开始时**拉取**（MCP `rules_get` / CLI `memhub context`），MemHub 不改写任何 Agent 自己的文件。
+
+- 数据：`Kind::Rule`，`vault/rules/global/` 与 `vault/rules/project-<名称>/`，`status: draft|approved|retired`、`verified: 日期` 存 frontmatter；标题为规则正文。
+- 流程：Agent `rule_propose` / `rules` 总结任务采纳 / 用户手动添加 → 草稿 → 人工批准 → 供给；退役后保留历史。
+- 供给：全局规则在前，默认预算 40 条 / 4 KiB，超出时在输出里说明；项目由目录（先对照登记项目，再取 git 仓库名）或名称解析。
+- 护栏：单行 ≤ 300 字符；拒绝疑似密钥与隐藏/双向字符；去重；风险提示（shell 命令 / URL / 覆盖指令）；草稿上限 50；规则不回流进总结任务；MCP 只能提议。
+- 后续（v0.3.0）：带 diff 预览与回滚的可选写回（`[[targets]]`）和 doctor；详见 `docs/mcp-next-steps.md`。

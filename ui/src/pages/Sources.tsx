@@ -93,7 +93,7 @@ function AddGeneric({ busy, onAdd }: { busy: boolean; onAdd: (p: { name: string;
       <div className="row">
         <label className="field grow"><span>{t.sources.name}</span><input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="my-agent" /></label>
         <label className="field" style={{ width: 140 }}><span>{t.sources.kind}</span>
-          <select className="input" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>{KINDS.filter((k) => k !== 'knowledge').map((k) => <option key={k} value={k}>{t.kinds[k]}</option>)}</select>
+          <select className="input" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>{KINDS.filter((k) => k !== 'knowledge' && k !== 'rule').map((k) => <option key={k} value={k}>{t.kinds[k]}</option>)}</select>
         </label>
       </div>
       <label className="field"><span>{t.sources.root}</span><input className="input mono" value={root} onChange={(e) => setRoot(e.target.value)} placeholder="~/bots/my-agent/memory" /></label>

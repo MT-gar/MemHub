@@ -2,9 +2,9 @@
 // browser (memhub serve) we POST /api/<cmd>. Both go through core::api::dispatch.
 
 export type Kind =
-  | 'instruction' | 'memory' | 'daily-log' | 'session-summary' | 'profile' | 'note' | 'knowledge'
+  | 'instruction' | 'memory' | 'daily-log' | 'session-summary' | 'profile' | 'note' | 'knowledge' | 'rule'
 
-export const KINDS: Kind[] = ['instruction', 'memory', 'daily-log', 'session-summary', 'profile', 'note', 'knowledge']
+export const KINDS: Kind[] = ['instruction', 'memory', 'daily-log', 'session-summary', 'profile', 'note', 'knowledge', 'rule']
 
 export interface EntrySummary {
   id: string; agent: string; source: string; project: string; project_path?: string | null
@@ -43,7 +43,16 @@ export interface Config {
 export interface Paths { home: string; config: string; vault: string; vault_display: string; index: string; tasks: string; templates: string }
 export interface Overview {
   version: string; stats: Stats; sources: DetectedSource[]; last_sync?: SyncReport | null
-  recent: EntrySummary[]; pending_tasks: number; paths: Paths
+  recent: EntrySummary[]; pending_tasks: number; pending_rules: number; paths: Paths
+}
+export type RuleStatus = 'draft' | 'approved' | 'retired'
+export interface Rule {
+  id: string; text: string; detail: string; scope: string; status: RuleStatus; agent: string; sources: string[]
+  created: string; updated: string; verified?: string | null; vault_path: string; warnings: string[]
+}
+export interface CompiledRules {
+  project?: string | null; markdown: string; rules: { id: string; text: string; scope: string }[]
+  total_approved: number; truncated: number; bytes: number
 }
 export interface TemplateInfo { id: string; name: string; description: string; path: string; builtin: boolean }
 export interface TaskScope {
@@ -53,7 +62,7 @@ export interface TaskScope {
 export interface TaskMeta {
   id: string; template: string; title: string; status: 'pending' | 'done' | 'accepted'
   created: string; updated: string; entry_ids: string[]; inlined: number; task_bytes: number
-  scope: TaskScope; knowledge_id?: string | null; language: string
+  scope: TaskScope; knowledge_id?: string | null; rule_ids?: string[]; language: string
 }
 export interface TaskDetail extends TaskMeta { task_md: string; result_md?: string | null; entries: EntrySummary[]; dir: string }
 export interface Snippet { id: string; label: string; file: string; language: string; snippet: string; hint: string }
@@ -122,6 +131,12 @@ export const api = {
   submitResult: (id: string, result: string) => call<TaskMeta>('submit_task_result', { id, result }),
   acceptTask: (id: string) => call<EntrySummary>('accept_task', { id }),
   deleteTask: (id: string) => call<{ ok: boolean }>('delete_task', { id }),
+  rules: (p: { scope?: string; status?: RuleStatus } = {}) => call<Rule[]>('list_rules', p as Record<string, unknown>),
+  addRule: (p: { text: string; detail?: string; scope?: string; status?: RuleStatus }) =>
+    call<{ rule: Rule; created: boolean }>('add_rule', p as Record<string, unknown>),
+  setRuleStatus: (id: string, status: RuleStatus) => call<Rule>('set_rule_status', { id, status }),
+  editRule: (id: string, p: { text?: string; detail?: string }) => call<Rule>('edit_rule', { id, ...p }),
+  previewRules: (project?: string) => call<CompiledRules>('preview_rules', { project }),
   snippets: (bin?: string) => call<Snippet[]>('get_snippets', { bin }),
   /** Desktop only: absolute path of the bundled `memhub` CLI (empty string in browser mode). */
   sidecarPath: async (): Promise<string> => (isTauri() ? ((await tauriInvoke('sidecar_path')) as string) : ''),
