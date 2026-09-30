@@ -41,7 +41,7 @@ pub fn parse_map(yaml: &str) -> BTreeMap<String, String> {
                 map.insert(k, serde_json::to_string(&items).unwrap_or_else(|_| "[]".into()));
                 items.clear();
             } else {
-                map.entry(k).or_insert_with(String::new);
+                map.entry(k).or_default();
             }
         }
     };

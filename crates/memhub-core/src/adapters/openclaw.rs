@@ -45,7 +45,7 @@ pub fn collect(root: &Path, _cfg: &SourceConfig) -> Vec<RawItem> {
                 .strip_prefix("workspace-")
                 .or_else(|| name.strip_prefix("workspace_"))
                 .filter(|s| !s.is_empty())
-                .map(|s| slugify(s))
+                .map(slugify)
                 .unwrap_or_else(|| "main".into());
             workspaces.push((agent_name, d));
         }

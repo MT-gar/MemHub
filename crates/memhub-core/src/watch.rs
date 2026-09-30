@@ -76,9 +76,8 @@ pub fn spawn(hub: Arc<Hub>, interval_secs: u64, hook: Option<ReportHook>) -> Res
                         let s = p.to_string_lossy().replace('\\', "/");
                         !s.contains("/.git/") && !s.ends_with(".tmp") && !s.ends_with('~')
                     });
-                    if relevant && dirty_since.is_none() {
-                        dirty_since = Some(Instant::now());
-                    } else if relevant {
+                    if relevant {
+                        // (re)start the debounce window on every relevant event
                         dirty_since = Some(Instant::now());
                     }
                 }

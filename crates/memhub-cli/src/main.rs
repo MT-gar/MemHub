@@ -1,3 +1,4 @@
+mod guard;
 mod serve;
 
 use anyhow::Result;
@@ -43,6 +44,12 @@ enum Cmd {
         /// Do not watch source directories
         #[arg(long)]
         no_watch: bool,
+        /// Also accept requests from this Origin (repeatable), e.g. a dev server
+        #[arg(long = "allow-origin")]
+        allow_origin: Vec<String>,
+        /// Require this access token (auto-generated when --host is not a loopback address)
+        #[arg(long, env = "MEMHUB_TOKEN")]
+        token: Option<String>,
     },
     /// Show detected agents and configured sources
     Detect,
@@ -125,9 +132,9 @@ fn main() -> Result<()> {
             }
             memhub_core::mcp::McpServer::new(hub, agent).run_stdio()?;
         }
-        Cmd::Serve { host, port, no_watch } => {
+        Cmd::Serve { host, port, no_watch, allow_origin, token } => {
             let hub = Arc::new(open(cli.home)?);
-            serve::run(hub, &host, port, !no_watch)?;
+            serve::run(hub, serve::Options { host, port, watch: !no_watch, allow_origins: allow_origin, token })?;
         }
         Cmd::Detect => {
             let hub = open(cli.home)?;

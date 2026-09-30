@@ -196,7 +196,7 @@ fn fallback_slug(name: &str) -> String {
     if s.chars().count() > 48 {
         // keep the tail (most specific part), cut at a word boundary
         let tail: String = s.chars().rev().take(48).collect::<Vec<_>>().into_iter().rev().collect();
-        s = tail.trim_start_matches(|c| c == '-' || c == '.').to_string();
+        s = tail.trim_start_matches(['-', '.']).to_string();
     }
     if s.chars().count() < 4 {
         // e.g. "C" from a path made only of CJK characters: make it distinguishable

@@ -8,7 +8,7 @@ if [ "$DEMO" = "1" ]; then
   export HOME="$PWD/demo/home" MEMHUB_USER_HOME="$PWD/demo/home" MEMHUB_HOME="$PWD/demo/home/.memhub"
 fi
 cargo build -p memhub-cli
-./target/debug/memhub serve --port 7337 &
+./target/debug/memhub serve --port 7337 --allow-origin http://localhost:1420 --allow-origin http://127.0.0.1:1420 &
 API=$!
 trap 'kill $API' EXIT
 (cd ui && npm run dev)
